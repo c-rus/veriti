@@ -40,7 +40,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.7.0
+          python-version: 3.x
 
       - name: Run tests
         run: |
@@ -71,5 +71,5 @@ jobs:
 
       - name: Run tests
         run: |
-          orbit plan --top t2 --plugin ghdl
+          orbit plan --top parity --plugin ghdl
           orbit b
