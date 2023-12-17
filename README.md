@@ -25,6 +25,10 @@ To achieve this goal, there are 3 main layers:
 
 The software drivers implement the low-level functions required to run any form of test. It translates your test cases into the raw data layer represented by a specific file format.
 
+The software drivers layer is responsible for generating test inputs, tracking coverage, and generating test outputs. 
+
+The software drivers layer can also generate HDL code, which is useful to copy/paste when writing the code to connect the hardware design to the raw data layer.
+
 ### Raw Data Layer
 
 The raw data layer stores the tests to run during simulation and the expected outputs. This information is typically stored in a specific file format already handled by `veriti`.
@@ -33,3 +37,27 @@ The raw data layer stores the tests to run during simulation and the expected ou
 
 The hardware drivers implement the low-level functions required to receive data from the raw data layer. This data is read during simulation to run test cases and automatically assert outputs.
 
+The hardware drivers layer is responsible for the timing of the simulation: specifically determining when to drive inputs and monitoring when to check outputs.
+
+## Operation 
+
+The software level and hardware level co-exist. The software level is first executed to make sure the hardware level has everything it needs: namely the input and output test vector files. 
+
+When the software is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, which are either `Coverpoints` or `Covergroups`.
+
+Once the test files are generated, the simulation can begin at the hardware level in the hardware description language. At the hardware drivers layer, a package of functions exist for clock generation, system reseting, signal driving, signal montioring, and assertions.
+
+## Installing
+
+### Software Drivers
+For the Python library, run the following command from this file's directory:
+```
+pip install ./sw-drivers/python
+```
+<!-- pip install -e ./sw-drivers/python -->
+
+### Hardware Drivers
+For the VHDL packages, run the following command from this file's directory:
+```
+orbit install --path ./hw-drivers
+```
