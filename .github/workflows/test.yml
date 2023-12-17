@@ -79,3 +79,5 @@ jobs:
           orbit b
           orbit plan --clean --top add --plugin ghdl
           orbit b
+          orbit plan --clean --top bcd_enc --plugin ghdl
+          orbit b
