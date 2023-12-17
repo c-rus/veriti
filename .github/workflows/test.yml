@@ -65,6 +65,10 @@ jobs:
           git clone https://github.com/c-rus/orbit-profile.git "$(orbit env ORBIT_HOME)/profiles/c-rus"
           orbit config --append include="profiles/c-rus/config.toml"
 
+      - name: Install veriti software drivers
+        run: |
+          pip install ./sw-drivers/python
+
       - name: Initialize orbit package
         run: |
           orbit init
