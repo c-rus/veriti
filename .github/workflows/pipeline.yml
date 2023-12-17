@@ -1,0 +1,9 @@
+name: pipeline
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    uses: c-rus/veriti/.github/workflows/test.yml@trunk

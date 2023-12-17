@@ -1,0 +1,75 @@
+name: test
+on:
+  workflow_call:
+
+jobs:
+  hw-drivers:
+    runs-on: ubuntu-latest
+    container:
+        image: crus800/fpga-simulation
+    steps:
+      - name: Fetch repository
+        uses: actions/checkout@v3
+
+      - name: Log all tool versions
+        run: |
+          orbit --version  
+          python --version
+          ghdl --version
+        
+      - name: Configure orbit profile
+        run: |
+          git clone https://github.com/c-rus/orbit-profile.git "$(orbit env ORBIT_HOME)/profiles/c-rus"
+          orbit config --append include="profiles/c-rus/config.toml"
+
+      - name: Initialize orbit package
+        run: |
+          orbit init
+
+      - name: Run tests
+        run: |
+          orbit plan --top t1 --plugin ghdl
+          orbit b
+
+  sw-drivers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch repository
+        uses: actions/checkout@v3
+
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.7.0
+
+      - name: Run tests
+        run: |
+          python -m unittest sw-drivers/python/src/veriti/*.py
+
+  system:
+    runs-on: ubuntu-latest
+    container:
+        image: crus800/fpga-simulation
+    steps:
+      - name: Fetch repository
+        uses: actions/checkout@v3
+
+      - name: Log all tool versions
+        run: |
+          orbit --version  
+          python --version
+          ghdl --version
+        
+      - name: Configure orbit profile
+        run: |
+          git clone https://github.com/c-rus/orbit-profile.git "$(orbit env ORBIT_HOME)/profiles/c-rus"
+          orbit config --append include="profiles/c-rus/config.toml"
+
+      - name: Initialize orbit package
+        run: |
+          orbit init
+
+      - name: Run tests
+        run: |
+          orbit plan --top t2 --plugin ghdl
+          orbit b
