@@ -10,10 +10,6 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-
-library std;
-use std.textio.all;
 
 package casting is
 
@@ -27,38 +23,10 @@ package casting is
     --! '1' maps to a logical '0'.
     function char_to_logic(c: character) return std_logic;
 
-    --! Consumes a single line in file `f` to cast from numerical value to a 
-    --! logic vector of size `len` consisting of logical '1' and '0's.
-    --!
-    --! Note: Integers cannot be read as 'negative' with a leading '-' sign.
-    impure function read_int_to_logics(file f: text; len: positive) return std_logic_vector;
-
-    --! Consumes a single line in file `f` to cast from numerical value to logical
-    --! '1' or '0'.
-    impure function read_int_to_logic(file f: text) return std_logic;
-
-    --! Consumes a single line in file `f` to be a logic vector of size `len`
-    --! consisting of logical '1' and '0's.
-    impure function read_str_to_logics(file f: text; len: positive) return std_logic_vector;
-
-    --! Consumes a single line in file `f` to be a logical '1' or '0'.
-    impure function read_str_to_logic(file f: text) return std_logic;
-
 end package;
 
 
 package body casting is
-
-    
-    function to_sl(i: integer) return std_logic is
-    begin
-        if(i = 0) then
-            return '0';
-        else
-            return '1';
-        end if;
-    end function;
-
 
     function logics_to_str(slv: std_logic_vector) return string is
         variable str : string(1 to slv'length);
@@ -87,26 +55,6 @@ package body casting is
     end function;
 
 
-    impure function read_int_to_logics(file f: text; len: positive) return std_logic_vector is
-        variable text_line : line;
-        variable text_int  : integer;
-    begin
-        readline(f, text_line);
-        read(text_line, text_int);
-        return std_logic_vector(to_unsigned(text_int, len));
-    end function;
-
-
-    impure function read_int_to_logic(file f: text) return std_logic is
-        variable text_line : line;
-        variable text_int  : integer;
-    begin
-        readline(f, text_line);
-        read(text_line, text_int);
-        return to_sl(text_int);
-    end function;
-
-
     function char_to_logic(c: character) return std_logic is
     begin
         if(c = '1') then
@@ -114,32 +62,6 @@ package body casting is
         else
             return '0';
         end if;
-    end function;
-
-
-    impure function read_str_to_logics(file f: text; len: positive) return std_logic_vector is
-        variable text_line : line;
-        variable text_str  : string(len downto 1);
-        variable slv       : std_logic_vector(len-1 downto 0);
-    begin
-        readline(f, text_line);
-        read(text_line, text_str);
-
-        for ii in len-1 downto 0 loop
-            slv(ii) := char_to_logic(text_str(ii+1));
-        end loop;
-
-        return slv;
-    end function;
-
-
-    impure function read_str_to_logic(file f: text) return std_logic is
-        variable text_line : line;
-        variable text_str  : string(1 downto 1);
-    begin
-        readline(f, text_line);
-        read(text_line, text_str);
-        return char_to_logic(text_str(1));
     end function;
 
 end package body;
