@@ -100,9 +100,9 @@ class Bfm(SuperBfm):
 
     def model(self, *args):
         result = self.in0.as_int() + self.in1.as_int() + self.cin.as_int()
-        bus = Signal(width=WIDTH+1, value=result).as_logic()
-        self.sum.set(bus[1:])
-        self.cout.set(bus[0])
+        temp = Signal(width=WIDTH+1, value=result).as_logic()
+        self.sum.set(temp[1:])
+        self.cout.set(temp[0])
 
         cp_cout_gen.cover(self.cout.as_int() == 1)
         return self

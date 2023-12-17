@@ -1,3 +1,11 @@
+# File: lib.py
+# Author: Chase Ruskin
+# Created: 2023-12-17
+# Details:
+#   Implements basic functions re-used across the library and throughout
+#   software modelling.
+#
+
 import math as _math
 from typing import List as _List
 

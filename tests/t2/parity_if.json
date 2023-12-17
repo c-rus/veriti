@@ -1,4 +1,6 @@
 {
+    "entity": "parity",
+    "architectures": ["rtl"],
     "generics": [
         {
             "name": "SIZE",
