@@ -47,8 +47,7 @@ begin
 
     --! test reading a file filled with test vectors
     io: process
-        -- hard-coded...change later with better project organization
-        file numbers: text open read_mode is "../../tests/t1/numbers.dat";
+        file numbers: text open read_mode is "numbers.dat";
     begin
         -- read 1s and 0s into logic vectors
         slv0 <= casting.read_str_to_logics(numbers, WIDTH_A);
