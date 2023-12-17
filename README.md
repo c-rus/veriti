@@ -21,6 +21,8 @@ To achieve this goal, there are 3 main layers:
 \* Supported Software Driver Layers: Python  
 \** Supported Hardware Driver Layers: VHDL
 
+This separation of functionality is important in terms of modularity: if a model needs to be written in a different language (such as C++), all that needs to change is to use the proper software drivers the targeted language; the raw data layer and hardware driver layer remain untouched.
+
 ### Software Drivers Layer
 
 The software drivers implement the low-level functions required to run any form of test. It translates your test cases into the raw data layer represented by a specific file format.
