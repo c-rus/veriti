@@ -1,8 +1,16 @@
 [project]
 name = "veriti"
-description = "SW drivers for a digital hardware verification framework."
 version = "0.1.0"
+authors = [{ name="Chase Ruskin" }]
+description = "SW drivers for a digital hardware verification framework"
 requires-python = ">=3.7"
+
+[project.scripts]
+veriti = "veriti.main:main"
+
+[project.urls]
+"Homepage" = "https://github.com/c-rus/veriti"
+"Bug Tracker" = "https://github.com/c-rus/veriti/issues"
 
 [build-system]
 requires = ["setuptools>=61.0"]

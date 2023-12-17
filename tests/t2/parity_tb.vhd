@@ -12,7 +12,7 @@ use ieee.std_logic_1164.all;
 
 library work;
 use std.textio.all;
-use work.veriti.all;
+use work.veriti;
 
 entity parity_tb is 
     generic (
@@ -57,7 +57,7 @@ begin
             if endfile(fd) = false then
                 -- drive a transaction
                 readline(fd, row);
-                drive(row, bfm.data);
+                veriti.drive(row, bfm.data);
             end if;
         end procedure;  
 
@@ -69,8 +69,8 @@ begin
             if endfile(fd) = false then
                 -- compare received outputs with expected outputs
                 readline(fd, row);
-                load(row, expct.check_bit);
-                assert_eq(bfm.check_bit, expct.check_bit, "check_bit");
+                veriti.load(row, expct.check_bit);
+                veriti.assert_eq(bfm.check_bit, expct.check_bit, "check_bit");
             end if;
         end procedure;
 

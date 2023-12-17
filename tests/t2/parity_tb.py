@@ -24,8 +24,8 @@ R_SEED = vi.get_seed(0)
 # collect generics from command-line and HDL testbench
 GENS = vi.get_generics()
 
-WIDTH: int = vi.from_vhdl_int(GENS['SIZE'])
-EVEN_PARITY: bool = vi.from_vhdl_bool(GENS['EVEN_PARITY'])
+WIDTH: int = vi.cast.from_vhdl_int(GENS['SIZE'])
+EVEN_PARITY: bool = vi.cast.from_vhdl_bool(GENS['EVEN_PARITY'])
 
 MAX_SIMS = 10_000
 
@@ -66,8 +66,6 @@ class Bfm(SuperBfm):
     pass
 
 # --- Script -------------------------------------------------------------------
-
-vi.parse_args(bfm=Bfm())
 
 random.seed(R_SEED)
 

@@ -77,3 +77,5 @@ jobs:
         run: |
           orbit plan --top parity --plugin ghdl
           orbit b
+          orbit plan --top add --plugin ghdl
+          orbit b

@@ -1,0 +1,28 @@
+{
+    "generics": [
+        {
+            "name": "SIZE",
+            "default": "8",
+            "type": "positive"
+        },
+        {
+            "name": "EVEN_PARITY",
+            "default": "true",
+            "type": "boolean"
+        }
+    ],
+    "ports": [
+        {
+            "name": "data",
+            "default": null,
+            "type": "std_logic_vector(SIZE-1 downto 0)",
+            "mode": "in"
+        },
+        {
+            "name": "check_bit",
+            "default": null,
+            "type": "std_logic",
+            "mode": "out"
+        }
+    ]
+}
