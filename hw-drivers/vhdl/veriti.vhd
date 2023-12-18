@@ -70,9 +70,9 @@ package veriti is
 
     -- LOGGING FUNCTIONS
 
-    type level is (TRACE, DEBUG, INFO, WARN, ERROR, FATAL);
+    type log_level is (TRACE, DEBUG, INFO, WARN, ERROR, FATAL);
 
-    procedure log(file fd: text; sev: level; topic: string; cause: string);
+    procedure log(file fd: text; sev: log_level; topic: string; cause: string);
     
     procedure log_monitor(file fd: text; signal clk: std_logic; signal flag: std_logic; cycles: natural; variable timeout: out boolean; cause: string);
     
@@ -276,7 +276,7 @@ package body veriti is
 
     -- LOGGING FUNCTIONS
 
-    procedure log(file fd: text; sev: level; topic: string; cause: string) is
+    procedure log(file fd: text; sev: log_level; topic: string; cause: string) is
         variable row : line;
         constant TIMESTAMP_SHIFT : positive := 15;
         constant LOGLEVEL_SHIFT : positive := 8;

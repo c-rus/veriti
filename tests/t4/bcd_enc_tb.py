@@ -80,7 +80,7 @@ class Bfm(SuperBfm):
         pass
 
 
-    def model(self, *args):
+    def model(self):
         # separate each digit
         digits = []
         word = self.bin.as_int()
@@ -100,7 +100,8 @@ class Bfm(SuperBfm):
         elif(diff > 0):
             for _i in range(diff):
                 digits.insert(0, 0)
-
+            pass
+        
         cg_overflow.cover(self.ovfl.as_int())
         cp_overflow_en.cover(self.ovfl.as_int() == 1)
 

@@ -98,7 +98,7 @@ class Bfm(SuperBfm):
         pass
 
 
-    def model(self, *args):
+    def model(self):
         result = self.in0.as_int() + self.in1.as_int() + self.cin.as_int()
         temp = Signal(width=WIDTH+1, value=result).as_logic()
         self.sum.set(temp[1:])
