@@ -72,7 +72,7 @@ package veriti is
 
     type level is (TRACE, DEBUG, INFO, WARN, ERROR, FATAL);
 
-    procedure log(file fd: text; rank: level; topic: string; cause: string);
+    procedure log(file fd: text; sev: level; topic: string; cause: string);
     
     procedure log_monitor(file fd: text; signal clk: std_logic; signal flag: std_logic; cycles: natural; variable timeout: out boolean; cause: string);
     
@@ -276,7 +276,7 @@ package body veriti is
 
     -- LOGGING FUNCTIONS
 
-    procedure log(file fd: text; rank: level; topic: string; cause: string) is
+    procedure log(file fd: text; sev: level; topic: string; cause: string) is
         variable row : line;
         constant TIMESTAMP_SHIFT : positive := 15;
         constant LOGLEVEL_SHIFT : positive := 8;
@@ -289,17 +289,17 @@ package body veriti is
         write(row, ' ');
 
         -- write the log level ("why") ... TRACE, DEBUG, INFO, WARN, ERROR, FATAL
-        if rank = TRACE then
+        if sev = TRACE then
             write(row, string'("TRACE"), left, LOGLEVEL_SHIFT);
-        elsif rank = DEBUG then
+        elsif sev = DEBUG then
             write(row, string'("DEBUG"), left, LOGLEVEL_SHIFT);
-        elsif rank = INFO then
+        elsif sev = INFO then
             write(row, string'("INFO"), left, LOGLEVEL_SHIFT);
-        elsif rank = WARN then
+        elsif sev = WARN then
             write(row, string'("WARN"), left, LOGLEVEL_SHIFT);
-        elsif rank = ERROR then
+        elsif sev = ERROR then
             write(row, string'("ERROR"), left, LOGLEVEL_SHIFT);
-        elsif rank = FATAL then
+        elsif sev = FATAL then
             write(row, string'("FATAL"), left, LOGLEVEL_SHIFT);
         else
             write(row, string'("INFO"), left, LOGLEVEL_SHIFT);
