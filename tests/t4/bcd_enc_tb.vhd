@@ -91,7 +91,7 @@ begin
         file outputs: text open read_mode is "outputs.dat";
         variable timeout: boolean;
 
-        procedure log_transaction(file ld: text; file fd: text) is
+        procedure score(file ld: text; file fd: text) is
             variable row: line;
             variable expct: bcd_enc_bfm;
         begin
@@ -119,7 +119,7 @@ begin
             veriti.log_monitor(results, clk, bfm.done, TIMEOUT_LIMIT, timeout, "done");
 
             -- compare outputs
-            log_transaction(results, outputs);
+            score(results, outputs);
             wait until rising_edge(clk);
         end loop;
 

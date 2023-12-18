@@ -9,7 +9,7 @@ __SEED: int = None
 
 VHDL_DRIVER_PROC_NAME = 'drive'
 VHDL_LOADER_PROC_NAME = 'load'
-VHDL_ASSERT_PROC_NAME = 'assert_eq'
+VHDL_ASSERT_PROC_NAME = 'log_assertion'
 
 def TAB(n: int):
     return (' ' * 4) * n

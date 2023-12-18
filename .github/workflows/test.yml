@@ -77,10 +77,7 @@ jobs:
         run: |
           orbit plan --clean --plugin ghdl --top parity
           orbit b
-          cat ./build/ghdl/results.log
           orbit plan --clean --plugin ghdl --top add
           orbit b
-          cat ./build/ghdl/results.log
           orbit plan --clean --plugin ghdl --top bcd_enc
           orbit b
-          cat ./build/ghdl/results.log
