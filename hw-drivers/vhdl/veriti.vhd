@@ -280,7 +280,7 @@ package body veriti is
         variable row : line;
         constant TIMESTAMP_SHIFT : positive := 15;
         constant LOGLEVEL_SHIFT : positive := 8;
-        constant TOPIC_SHIFT : positive := 18;
+        constant TOPIC_SHIFT : positive := 12;
     begin
         -- write the timestamp ("when")
         write(row, '[');
@@ -320,33 +320,41 @@ package body veriti is
 
     procedure log_monitor(file fd: text; signal clk: std_logic; signal flag: std_logic; cycles: natural; variable timeout : out boolean; cause: string) is
         variable cycle_count : natural := 0;
+        constant cycle_limit : natural := cycles + 1;
     begin
         timeout := true;
-        if cycles = 0 then
-            wait until rising_edge(clk) and flag = '1';
+        -- wait forever if there is no clock cycle limit
+        if cycle_limit = 0 then
+            wait until falling_edge(clk) and flag = '1';
             timeout := false;
             return;
         else
-            while cycle_count < cycles loop
+            -- wonky way to count cycles and evaluate on first edge of flag being asserted...
+            -- maybe break monitor into 2 separate processes (a cycle counter and a rising flag detector)
+            while cycle_count < cycle_limit loop
                 if flag = '1' then
                     timeout := false;
+                    log(fd, INFO, "TIMEOUT", cause & " - required " & integer'image(cycle_count) & " cycles");
                     return;
                 end if;
-                wait until rising_edge(clk);
+                -- necessary ordering to escape at correct time in simulation
                 cycle_count := cycle_count + 1;
+                if cycle_count < cycle_limit then
+                    wait until falling_edge(clk);
+                end if;
             end loop;
         end if;
         -- reached this point, then a violation has occurred
-        log(fd, ERROR, "TIMEOUT_VIOLATION", cause & " - never asserted after " & integer'image(cycles) & " cycles");
+        log(fd, ERROR, "TIMEOUT", cause & " - never asserted after waiting " & integer'image(cycles) & " cycles");
     end procedure;
 
 
     procedure log_assertion(file fd: text; received: std_logic; expected: std_logic; cause: string) is
     begin
         if received /= expected then
-            log(fd, ERROR, "SIGNAL_ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
+            log(fd, ERROR, "ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
         else 
-            log(fd, INFO, "SIGNAL_ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
+            log(fd, INFO, "ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
         end if;
     end procedure;
 
@@ -354,9 +362,9 @@ package body veriti is
     procedure log_assertion(file fd: text; received: std_logic_vector; expected: std_logic_vector; cause: string) is
     begin
         if received /= expected then
-            log(fd, ERROR, "SIGNAL_ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
+            log(fd, ERROR, "ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
         else 
-            log(fd, INFO, "SIGNAL_ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
+            log(fd, INFO, "ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
         end if;
     end procedure;
 
@@ -372,13 +380,13 @@ package body veriti is
             -- check if its been stable since the rising edge of done
             if vec_prev /= vec then
                 is_okay := false;
-                log(fd, ERROR, "SIGNAL_STABILITY", cause & " - updated value " & casting.to_str(vec) & " lost stability of " & casting.to_str(vec_prev));
+                log(fd, ERROR, "STABILITY", cause & " - updated value " & casting.to_str(vec) & " lost stability of " & casting.to_str(vec_prev));
             end if;
 
             wait until rising_edge(clk);
         end loop;
             if is_okay = true then
-                log(fd, INFO, "SIGNAL_STABILITY", cause & " - maintained stability at " & casting.to_str(vec_prev));
+                log(fd, INFO, "STABILITY", cause & " - maintained stability at " & casting.to_str(vec_prev));
             end if;
     end procedure;
 

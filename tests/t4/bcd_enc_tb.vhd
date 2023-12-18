@@ -32,7 +32,7 @@ architecture sim of bcd_enc_tb is
     signal halt: boolean := false;
 
     --! declare internal required testbench signals
-    constant TIMEOUT_LIMIT: natural := 1000;
+    constant TIMEOUT_LIMIT: natural := 1_000;
 
     file results: text open write_mode is "results.log";
 
@@ -110,49 +110,26 @@ begin
         end procedure;
         
     begin
-        wait until rst = '0';
+        wait until rising_edge(clk) and rst = '0';
 
         while endfile(outputs) = false loop
+            -- @note: should monitor detect rising edge or when = '1'? ... when = '1' will delay by a cycle, which could not be the intention
+            -- @todo: have better handling of monitor process (WIP, might be good now)
+
             -- wait for a valid time to check
-            wait until rising_edge(bfm.done);
-            -- @note: should monitor detect rising edge or when = '1'?
-            veriti.log_monitor(results, clk, bfm.done, TIMEOUT_LIMIT, timeout, "done");
+            veriti.log_monitor(results, clk, bfm.done, TIMEOUT_LIMIT, timeout, "done being asserted");
 
             -- compare outputs
             score(results, outputs);
-            wait until rising_edge(clk);
+            -- wait for done to be lowered before starting monitor
+            wait until falling_edge(bfm.done);
         end loop;
 
         -- halt the simulation
         veriti.complete(halt);
     end process;
 
-    -- concurrent assertions
-
-
-    -- capture_stability(...)
-    -- veriti.assert_stability(clk, bfm.done, bfm.bcd, "bcd");
-    veriti.log_stability(results, clk, bfm.done, bfm.bcd, "bcd switches while done remains asserted");
-
-    -- experimental code
-    --- verity.assert_stability(clk, bfm.done, as_logics(bfm.ovfl), "ovfl");
-
-    -- procedure assert_stability(clk: logic; cond: bool; vec: logics; halt: bool; comment: string) is
-    -- concurrent assertions
-    -- assert_stability: process
-    --     variable bcd_delta: logics(bfm.bcd'range);
-    --     variable ovfl_delta: logic;
-    -- begin
-    --     wait until rising_edge(bfm.done);
-    --     bcd_delta := bfm.bcd;
-    --     ovfl_delta := bfm.ovfl;
-    --     while bfm.done = '1' and halt = false loop
-    --         -- check if its been stable since the rising edge of done
-    --         assert bcd_delta = bfm.bcd report "Output 'bcd' unstable" severity error;
-    --         assert ovfl_delta = bfm.ovfl report "Output 'ovfl' unstable" severity error;
-    --         wait until rising_edge(clk);
-    --     end loop;
-    --     verity.check(halt);
-    -- end process;
+    -- concurrent captures of simulation
+    veriti.log_stability(results, clk, bfm.done, bfm.bcd, "bcd depending on done");
 
 end architecture;
