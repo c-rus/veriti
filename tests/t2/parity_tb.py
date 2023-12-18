@@ -56,12 +56,13 @@ class Bfm(SuperBfm):
         pass
 
 
-    def model(self, *args):
+    def evaluate(self):
         self.check_bit.set(0)
         # cast into a `List[int]` type
         vec = [int(x) for x in self.data.as_logic()]
         if set_parity_bit(vec, use_even=EVEN_PARITY) == True:
             self.check_bit.set(1)
+            
         return self
     pass
 
@@ -78,5 +79,5 @@ for _ in range(0, MAX_SIMS):
     # create a new input to enter through the algorithm
     txn = Bfm().rand()
     i_file.write(txn)
-    o_file.write(txn.model())
+    o_file.write(txn.evaluate())
     pass

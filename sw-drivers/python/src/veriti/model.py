@@ -295,7 +295,11 @@ class SuperBfm(_ABC):
     
 
     @_abstractmethod
-    def model(self, *args):
+    def evaluate(self, *args):
+        '''
+        Process the inputs for the current transaction to update the outputs with
+        their correct values according to the design's intended behavior.
+        '''
         pass
 
     pass

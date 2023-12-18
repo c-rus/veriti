@@ -80,7 +80,7 @@ class Bfm(SuperBfm):
         pass
 
 
-    def model(self):
+    def evaluate(self):
         # separate each digit
         digits = []
         word = self.bin.as_int()
@@ -154,12 +154,12 @@ while Coverage.all_passed(MAX_SIMS) == False:
         i_file.write(bad)
 
     # compute expected values to send to simulation
-    o_file.write(txn.model())
+    o_file.write(txn.evaluate())
     pass
 
 print()
 print('Seed:', R_SEED)
-print("Test Count:", Coverage.count())
+print("Valid Transaction Count:", Coverage.count())
 print("Coverage:", Coverage.percent(), "%")
 # write/display coverage statistics
 print(Coverage.report(False))

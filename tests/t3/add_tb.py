@@ -98,7 +98,7 @@ class Bfm(SuperBfm):
         pass
 
 
-    def model(self):
+    def evaluate(self):
         result = self.in0.as_int() + self.in1.as_int() + self.cin.as_int()
         temp = Signal(width=WIDTH+1, value=result).as_logic()
         self.sum.set(temp[1:])
@@ -165,12 +165,12 @@ while Coverage.all_passed(MAX_SIMS) == False:
     i_file.write(txn)
 
     # compute expected values to send to simulation
-    o_file.write(txn.model())
+    o_file.write(txn.evaluate())
     pass
 
 print()
 print('Seed:', R_SEED)
-print("Test Count:", Coverage.count())
+print("Valid Transaction Count:", Coverage.count())
 print("Coverage:", Coverage.percent(), "%")
 # display quick summary coverage statistics
 print(Coverage.report(False))
