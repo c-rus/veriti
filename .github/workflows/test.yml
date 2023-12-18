@@ -75,9 +75,12 @@ jobs:
 
       - name: Run tests
         run: |
-          orbit plan --clean --top parity --plugin ghdl
+          orbit plan --clean --plugin ghdl --top parity
           orbit b
-          orbit plan --clean --top add --plugin ghdl
+          cat ./build/ghdl/results.log
+          orbit plan --clean --plugin ghdl --top add
           orbit b
-          orbit plan --clean --top bcd_enc --plugin ghdl
+          cat ./build/ghdl/results.log
+          orbit plan --clean --plugin ghdl --top bcd_enc
           orbit b
+          cat ./build/ghdl/results.log

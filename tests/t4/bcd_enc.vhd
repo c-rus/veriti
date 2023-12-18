@@ -142,7 +142,7 @@ begin
                 -- transition back to the beginning state
                 state_d <= S_WAIT;
             
-            when S_WAIT => 
+            when S_WAIT =>
                 done <= '1';
                 -- uncomment this line to see stability errors
                 -- bcd <= (others => '0');

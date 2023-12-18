@@ -20,6 +20,13 @@ def main():
     # process the json data
     data = json.loads(args.json)
 
+    # when creating driver and scorer, also grab list of port names (in their assembled order)
+    # so it synchronizes with which bit is which each line
+    # ... requires knowledge of the BFM defined in the SW model script
+    # or when writing tests in SW model, load the json data so it can get proper order from file
+
+    # create a function/command to take in a log file and coverage file to perform post-simulation analysis
+    # and provide a meaningful exit code and messages
     if args.bfm == True:
         print(get_vhdl_record_bfm(data['ports'], data['entity']))
     if args.driver == True:

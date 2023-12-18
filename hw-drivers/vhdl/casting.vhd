@@ -14,10 +14,10 @@ use ieee.std_logic_1164.all;
 package casting is
 
     --! Returns a string representation of logic vector to output to console.
-    function logics_to_str(slv: std_logic_vector) return string;
+    function to_str(slv: std_logic_vector) return string;
 
     --! Returns a string representation of logic bit to output to console.
-    function logic_to_str(sl: std_logic) return string;
+    function to_str(sl: std_logic) return string;
 
     --! Casts a character `c` to a logical '1' or '0'. Anything not the character
     --! '1' maps to a logical '0'.
@@ -28,7 +28,7 @@ end package;
 
 package body casting is
 
-    function logics_to_str(slv: std_logic_vector) return string is
+    function to_str(slv: std_logic_vector) return string is
         variable str : string(1 to slv'length);
         variable str_index : positive := 1;
         variable sl_bit : std_logic;
@@ -39,19 +39,35 @@ package body casting is
                 str(str_index) := '1';
             elsif sl_bit = '0' then
                 str(str_index) := '0';
+            elsif sl_bit = 'X' then
+                str(str_index) := 'X';
+            elsif sl_bit = 'U' then
+                str(str_index) := 'U';
             else
                 str(str_index) := '?';
             end if;
             str_index := str_index + 1;
         end loop;
-
-        return integer'image(slv'length) & "b'" & str;
+        return str;
+        -- return integer'image(slv'length) & "b'" & str;
     end function;
 
 
-    function logic_to_str(sl: std_logic) return string is
+    function to_str(sl: std_logic) return string is
+        variable str : string(1 to 1);
     begin
-        return std_logic'image(sl);
+        if sl = '1' then
+            str(1) := '1';
+        elsif sl = '0' then
+            str(1) := '0';
+        elsif sl = 'X' then
+            str(1) := 'X';
+        elsif sl = 'U' then
+            str(1) := 'U';
+        else
+            str(1) := '?';
+        end if;
+        return str;
     end function;
 
 
