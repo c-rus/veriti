@@ -44,11 +44,19 @@ The hardware drivers layer is responsible for the timing of the simulation: spec
 
 ## Operation 
 
-The software level and hardware level co-exist. The software level is first executed to make sure the hardware level has everything it needs: namely the input and output test vector files. 
+Verification is done through simulation at the hardware level. The hardware simulation is trace-based; the set of inputs and outputs are pre-recorded before the simulation begins. These traces are stored in the raw data layer.
 
-When the software is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, which are either `Coverpoints` or `Covergroups`.
+The workflow is broken down into 3 main steps:
 
-Once the test files are generated, the simulation can begin at the hardware level in the hardware description language. At the hardware drivers layer, a package of functions exist for clock generation, system reseting, signal driving, signal montioring, and assertions.
+1. Run the software model using `veriti` software drivers to write files at the raw data layer for design-under-test's inputs and expected outputs based on defined coverage.
+
+2. Run hardware simulation to read/parse inputs and outputs and record outcomes into a log file using `veriti` hardware drivers.
+
+3. Run a software program (`veriti`) to interpret/analyze outcomes stored in log file.
+
+When the software model is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, which are either `Coverpoints` or `Covergroups`.
+
+Once the test files are generated at the raw data layer, the simulation can begin in the hardware description language. At the hardware drivers layer, a package of functions exist for clock generation, system reseting, signal driving, signal montioring, and logging.
 
 ## Installing
 
