@@ -32,6 +32,10 @@ The software drivers layer can also generate HDL code, which is useful to copy/p
 
 The raw data layer stores the tests to run during simulation and the expected outputs. This information is typically stored in a specific file format already handled by `veriti`.
 
+Each line in a raw data file is a _transaction_. A transaction in this sense is the combination of complete set of inputs or outputs. For raw data stored in an input file, each transaction is to be the input into the design-under-test on a single clock cycle. For raw data stored in an output file, each transaction is the outputs to be checked against the design-under-test's outputs in the scoreboard. The output transactions do not have to be checked every clock cycle, and may only be cared when a certain condition occurs (such as a valid signal being asserted).
+
+The number of transactions stored as inputs and outputs does not have to be 1-to-1. There may be more input transactions (fed every clock cycle) than output transactions (only checked when valid).
+
 ### Hardware Drivers Layer
 
 The hardware drivers implement the low-level functions required to receive data from the raw data layer. This data is read during simulation to run test cases and automatically assert outputs.
