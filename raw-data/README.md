@@ -24,8 +24,8 @@ SIGNAL_1,SIGNAL_2,...,SIGNAL_N,
 
 The file format is specified to provide meaningful recordings of what happened, when it happened, why it happened, and how it happened. This is the artifact produced by a hardware simulation using the `veriti` framework. Files are given the `.log` file extension.
 
-Logs directly produced by the hardware simulation may provide too much information and may not be formatted for easy readability. This is way it is recommendended to process the log through `veriti` to allow for filtering, better formatting, and analysis.
- 
+Logs directly produced by the hardware simulation may provide too much information and may not be formatted for easy readability. For these reasons, it is recommended to process the log through `veriti` to allow for filtering, better formatting, and analysis.
+
 ```
 [TIMESTAMP] LEVEL TOPIC "CAUSE"
 ```
