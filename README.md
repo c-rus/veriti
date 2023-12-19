@@ -8,6 +8,8 @@ Verification is an important process in the hardware development cycle, and as h
 
 Any hardware design can be translated behaviorally to software, and by writing the model in software (instead of hardware), it provides an extra level of cross-checking to ensure the design matches specification. Writing the model in software is also typically easier with nicer constructs and an abundance of existing libraries available. With `veriti`, all of the plumbing in setting up tests is minimized so testing the next hardware design only requires focusing on writing the model, not the whole framework.
 
+This framework attempts to decouple the functional and timing aspects of a hardware simulation. The functional model is written in software, while the exact timing of how to monitor and check the design-under-test is kept in HDL. This separation of layers allows each language to excel at what it is good at.
+
 ## Architecture
 
 To achieve this goal, there are 3 main layers:

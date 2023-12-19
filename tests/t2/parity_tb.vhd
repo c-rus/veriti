@@ -54,8 +54,8 @@ begin
 
     --! assert the received outputs match expected model values
     bench: process
-        file inputs  : text open read_mode is "inputs.dat";
-        file outputs : text open read_mode is "outputs.dat";
+        file inputs  : text open read_mode is "inputs.trace";
+        file outputs : text open read_mode is "outputs.trace";
         
         procedure drive_transaction(file fd: text) is 
             variable row : line;

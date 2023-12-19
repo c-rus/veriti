@@ -60,7 +60,7 @@ begin
 
     --! test reading a file filled with test vectors
     DRIVER : process
-        file inputs : text open read_mode is "inputs.dat";
+        file inputs : text open read_mode is "inputs.trace";
 
         -- @note: auto-generate procedure from python script because that is where
         -- order is defined for test vector inputs
@@ -94,7 +94,7 @@ begin
     end process;
 
     CHECKER : process
-        file outputs : text open read_mode is "outputs.dat";
+        file outputs : text open read_mode is "outputs.trace";
         variable timeout : boolean;
 
         -- @note: auto-generate procedure from python script because that is where

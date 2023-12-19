@@ -11,7 +11,7 @@
 import random
 import veriti as vi
 from veriti.coverage import Coverage, Covergroup, Coverpoint
-from veriti.model import SuperBfm, Signal, Mode, InputFile, OutputFile
+from veriti.model import SuperBfm, Signal, Mode
 
 # --- Constants ----------------------------------------------------------------
 
@@ -122,8 +122,8 @@ class Bfm(SuperBfm):
 random.seed(R_SEED)
 
 # create empty test vector files
-i_file = InputFile()
-o_file = OutputFile()
+i_file = vi.InputFile()
+o_file = vi.OutputFile()
 
 # initialize the values with defaults
 i_file.write(Bfm())

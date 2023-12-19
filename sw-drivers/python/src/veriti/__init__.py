@@ -1,6 +1,7 @@
-__all__ = ["coverage", "model", "cast", "lib"]
+__all__ = ["coverage", "model", "cast", "lib", "log", "trace"]
 
 from . import cast
 from . import coverage
 from . import model
 from .lib import *
+from .trace import *

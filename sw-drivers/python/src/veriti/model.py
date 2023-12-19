@@ -4,6 +4,7 @@ import random as _random
 from typing import Tuple as _Tuple
 from enum import Enum as _Enum
 from .lib import to_logic, from_logic, pow2m1
+from . import config
 
 class Mode(_Enum):
     INPUT  = 0
@@ -302,62 +303,6 @@ class SuperBfm(_ABC):
         '''
         pass
 
-    pass
-
-
-class InputFile:
-    def __init__(self, fname: str='inputs.dat', mode='w', verbose=False):
-        '''
-        Creates an input test vector file in write mode.
-        '''
-        self._file = open(fname, mode)
-        self._verbose = verbose
-        self._empty = True
-        pass
-
-
-    def write(self, bfm: SuperBfm):
-        '''
-        Writes the inputs of the bus functional model to the input test vector file.
-        '''
-        if issubclass(type(bfm), SuperBfm) == True:
-            if self._verbose == True and self._empty == True:
-                self._file.write('# ')
-                for io in bfm.get_ports(mode=Mode.INPUT):
-                    self._file.write(str(io[0]) + ', ')
-                self._file.write('\n')
-                pass
-            bfm.send(self._file, mode=Mode.INPUT)
-            self._empty = False
-        else:
-            print('WARNING: Tried to write invalid type to input test vector file')
-    pass
-
-
-class OutputFile:
-    def __init__(self, fname: str='outputs.dat', mode='w', verbose=False):
-        '''
-        Creates an output test vector file in write mode.
-        '''
-        self._file = open(fname, mode)
-        self._verbose = verbose
-        self._empty = True
-
-
-    def write(self, bfm: SuperBfm):
-        '''
-        Writes the outputs of the bus funcitonal model to the output test vector file.
-        '''
-        if issubclass(type(bfm), SuperBfm):
-            if self._verbose == True and self._empty == True:
-                self._file.write('# ')
-                for io in bfm.get_ports(mode=Mode.OUTPUT):
-                    self._file.write(str(io[0]) + ', ')
-                self._file.write('\n')
-                pass
-            bfm.send(self._file, mode=Mode.OUTPUT)
-        else:
-            print('WARNING: Tried to write invalid type to output test vector file')
     pass
 
 

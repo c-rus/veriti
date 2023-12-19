@@ -6,7 +6,7 @@ DATA: str = '''\
 100010101001,100110011001,1,0,
 '''
 
-with open('inputs.dat', 'w') as f:
+with open('inputs.trace', 'w') as f:
     f.write(DATA)
     pass
 
@@ -18,6 +18,6 @@ DATA: str = '''\
 1,
 '''
 
-with open('outputs.dat', 'w') as f:
+with open('outputs.trace', 'w') as f:
     f.write(DATA)
     pass
