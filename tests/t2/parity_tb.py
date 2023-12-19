@@ -13,7 +13,7 @@
 import veriti as vi
 from typing import List
 from veriti.coverage import Coverage, Covergroup, Coverpoint
-from veriti.model import SuperBfm, Signal, Mode, InputFile, OutputFile
+from veriti.model import SuperBfm, Signal, Mode
 import random
 
 # --- Constants ----------------------------------------------------------------
@@ -71,8 +71,8 @@ class Bfm(SuperBfm):
 random.seed(R_SEED)
 
 # create empty test vector files
-i_file = InputFile()
-o_file = OutputFile()
+i_file = vi.InputFile()
+o_file = vi.OutputFile()
 
 # generate test cases until total coverage is met or we reached max count
 for _ in range(0, MAX_SIMS):
