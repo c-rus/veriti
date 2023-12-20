@@ -71,8 +71,8 @@ class Bfm(SuperBfm):
 random.seed(R_SEED)
 
 # create empty test vector files
-i_file = vi.InputFile()
-o_file = vi.OutputFile()
+i_file = vi.InputTrace()
+o_file = vi.OutputTrace()
 
 # generate test cases until total coverage is met or we reached max count
 for _ in range(0, MAX_SIMS):

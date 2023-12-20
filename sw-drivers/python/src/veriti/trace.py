@@ -2,7 +2,7 @@ from . import model
 from . import config
 
 
-class InputFile:
+class InputTrace:
 
     def __init__(self, fname: str='inputs'+config.TRACE_FILE_EXT, mode='w', verbose=False):
         '''
@@ -32,7 +32,7 @@ class InputFile:
     pass
 
 
-class OutputFile:
+class OutputTrace:
     def __init__(self, fname: str='outputs'+config.TRACE_FILE_EXT, mode='w', verbose=False):
         '''
         Creates an output test vector file in write mode.

@@ -122,8 +122,8 @@ class Bfm(SuperBfm):
 random.seed(R_SEED)
 
 # create empty test vector files
-i_file = vi.InputFile()
-o_file = vi.OutputFile()
+i_file = vi.InputTrace()
+o_file = vi.OutputTrace()
 
 # initialize the values with defaults
 i_file.write(Bfm())
