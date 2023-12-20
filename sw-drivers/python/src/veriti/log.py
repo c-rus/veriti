@@ -1,14 +1,14 @@
 from enum import Enum as _Enum
-from .config import LOG_CAUSE_L_TOKEN, LOG_CAUSE_R_TOKEN, LOG_TIMESTAMP_L_TOKEN, LOG_TIMESTAMP_R_TOKEN
+from . import config
 
 
 class Level(_Enum):
-    TRACE = 0,
-    DEBUG = 1,
-    INFO = 2,
-    WARN = 3,
-    ERROR = 4,
-    FATAL = 5,
+    TRACE = 0
+    DEBUG = 1
+    INFO = 2
+    WARN = 3
+    ERROR = 4
+    FATAL = 5
 
     @staticmethod
     def from_str(s: str):
@@ -30,6 +30,10 @@ class Level(_Enum):
         else:
             print('failed to parse level')
             return -1
+        
+    
+    def __str__(self):
+        return self.name
         
 
     def is_fail(self) -> bool:
@@ -84,6 +88,10 @@ class Timeunit(_Enum):
             return -1
         
 
+    def __str__(self):
+        return self.name.lower()
+        
+
     def convert(self, unit):
         '''
         Returns the value necessary to convert to the new time unit `unit`.
@@ -126,6 +134,10 @@ class Timestamp:
             return -1
         ts = Timestamp(ticks=int(parts[0]), unit=Timeunit.from_str(parts[1]))
         return ts
+    
+
+    def __str__(self):
+        return str(self._ticks) + ' ' + str(self._unit)
 
 
     def __eq__(self, rhs):
@@ -142,21 +154,38 @@ class Record:
         self._level: Level = level
         self._topic: str = topic
         self._cause: str = cause
+
+        self._max_ts_str_len = -1
         pass
 
 
     @staticmethod
     def from_str(s: str):
         # slice and remove delimiters from timestamp break off into components
-        timestamp: str = s[s.find(LOG_TIMESTAMP_L_TOKEN)+1:s.find(LOG_TIMESTAMP_R_TOKEN)]
+        timestamp: str = s[s.find(config.LOG_TIMESTAMP_L_TOKEN)+1:s.find(config.LOG_TIMESTAMP_R_TOKEN)]
         # slice and remove enclosing quotes around cause
-        cause: str = s[s.find(LOG_CAUSE_L_TOKEN)+1:s.rfind(LOG_CAUSE_R_TOKEN)]
+        cause: str = s[s.find(config.LOG_CAUSE_L_TOKEN)+1:s.rfind(config.LOG_CAUSE_R_TOKEN)]
         # deal with remaining part of record
-        parts = s[s.find(LOG_TIMESTAMP_R_TOKEN)+1:s.find(LOG_CAUSE_L_TOKEN)].split()
+        parts = s[s.find(config.LOG_TIMESTAMP_R_TOKEN)+1:s.find(config.LOG_CAUSE_L_TOKEN)].split()
 
         level = parts[0]
         topic = parts[1]
         return Record(Timestamp.from_str(timestamp), Level.from_str(level), topic, cause)
+
+
+    def __str__(self):
+        return \
+            config.LOG_TIMESTAMP_L_TOKEN + \
+            str.ljust(str(self._timestamp), 15) + \
+            config.LOG_TIMESTAMP_R_TOKEN + \
+            ' ' + \
+            str.ljust(str(self._level), 8) + \
+            ' ' + \
+            str.ljust(str(self._topic), 12) + \
+            ' ' + \
+            '"' + \
+            str(self._cause) + \
+            '"'
 
 
     def __eq__(self, rhs):
@@ -170,11 +199,24 @@ class Record:
 
 class Log:
 
-    def __init__(self, outcomes):
+    def __init__(self, outcomes, max_ts_str_len=-1):
         '''
         Create a handler to a log file located at `path`.
         '''
         self._outcomes = outcomes
+
+        # collect stats
+        self._tests = 0
+        self._passes = 0
+        self._fails = 0
+        for event in self._outcomes:
+            event._max_ts_str_len = max_ts_str_len
+            if event._level.is_fail() == True or event._level.is_pass() == True:
+                self._tests += 1
+            if event._level.is_fail() == True:
+                self._fails += 1
+            if event._level.is_pass() == True:
+                self._passes += 1
         pass
 
 
@@ -182,10 +224,13 @@ class Log:
     def from_str(s: str):
         outcomes = []
         # split on newlines
+        max_ts_str_len = 0
         for line in s.splitlines():
             outcomes += [Record.from_str(line)]
+            if len(str(outcomes[-1]._timestamp)) > max_ts_str_len:
+                max_ts_str_len = len(str(outcomes[-1]._timestamp))
             pass
-        return Log(outcomes)
+        return Log(outcomes, max_ts_str_len=max_ts_str_len)
 
 
     @staticmethod
@@ -203,47 +248,36 @@ class Log:
         '''
         Determines if the log is successful (has 0 failures).
         '''
-        out: Record
-        for out in self._outcomes:
-            if out._level.is_fail() == True:
-                return False
-        return True
+        return self._fails == 0
     
 
     def get_test_count(self) -> int:
         '''
         Reports number of test-able outcomes.
         '''
-        tests: int = 0
-        for out in self._outcomes:
-            out: Record
-            if out._level.is_fail() or out._level.is_pass():
-                tests += 1
-        return tests
+        return self._tests
     
 
     def get_pass_count(self) -> int:
         '''
         Reports the number of tests passed.
         '''
-        passes: int = 0
-        for out in self._outcomes:
-            out: Record
-            if out._level.is_pass() == True:
-                passes += 1
-        return passes
+        return self._passes
     
 
     def get_fail_count(self) -> int:
         '''
         Reports the number of tests failed.
         '''
-        fails: int = 0
-        for out in self._outcomes:
-            out: Record
-            if out._level.is_fail() == True:
-                fails += 1
-        return fails
+        return self._fails
+    
+
+    def get_outcomes(self):
+        return self._outcomes
+    
+    
+    def get_score(self):
+        return round((self._passes/self._tests) * 100.0, 2) if self._tests > 0 else None
     
     pass
 

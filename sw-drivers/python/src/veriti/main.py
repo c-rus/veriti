@@ -7,16 +7,61 @@
 
 import argparse, json
 from . import config
+from . import log
+from . import __version__
+
 
 def main():
-    parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument('--bfm', action='store_true', default=False, help='generate the HDL bus functional model')
-    parser.add_argument('--driver', action='store_true', default=False, help='generate the HDL driving procedure')
-    parser.add_argument('--scorer', action='store_true', default=False, help='generate the HDL scoring procedure')
-    parser.add_argument('json', help='JSON data defining design-under-test\'s interface')
+    parser = argparse.ArgumentParser(prog='veriti', allow_abbrev=False)
+    parser.add_argument('--version', action='version', version=__version__.VERSION)
 
-    args = parser.parse_args()
+    sub_parsers = parser.add_subparsers(dest='subcommand', metavar='command')
 
+    # subcommand: 'make'
+    parser_make = sub_parsers.add_parser('make', help='create HDL code synchronized to the model')
+
+    parser_make.add_argument('--bfm', action='store_true', default=False, help='generate the HDL bus functional model')
+    parser_make.add_argument('--driver', action='store_true', default=False, help='generate the HDL driving procedure')
+    parser_make.add_argument('--scorer', action='store_true', default=False, help='generate the HDL scoring procedure')
+    parser_make.add_argument('json', type=str, help='JSON data defining design-under-test\'s interface')
+
+    # subcommand: 'read'
+    parser_read = sub_parsers.add_parser('read', help='analyze post-simulation logged outcomes')
+
+    parser_read.add_argument('--log', type=str, required=True, help='path to log file')
+    parser_read.add_argument('--level', type=int, default=log.Level.WARN.value, help='severity level')
+
+    # subcommand: 'check'
+    parser_check = sub_parsers.add_parser('check', help='verify post-simulation logged outcomes')
+
+    parser_check.add_argument('--log', type=str, help='path to log file')
+    parser_check.add_argument('--cov', type=str, help='path to coverage file')
+    
+    args: argparse.Namespace = parser.parse_args()
+
+    # branch on subcommand
+    sc = args.subcommand
+    if sc == 'make':
+        make(args)
+    elif sc == 'read':
+        data = read(args.log, args.level)
+        print(data)
+    elif sc == 'check':
+        result = check(args.log, args.cov)
+        if result == True:
+            print('Passed verification')
+            exit(0)
+        if result == False:
+            print('Failed verification')
+            exit(101)
+        pass
+    elif sc == None:
+        parser.print_help()
+        pass
+    pass
+
+
+def make(args: argparse.Namespace):
     # process the json data
     data = json.loads(args.json)
 
@@ -25,16 +70,42 @@ def main():
     # ... requires knowledge of the BFM defined in the SW model script
     # or when writing tests in SW model, load the json data so it can get proper order from file
 
+    zero_raised = args.bfm == False and args.driver == False and args.scorer == False
     # create a function/command to take in a log file and coverage file to perform post-simulation analysis
     # and provide a meaningful exit code and messages
-    if args.bfm == True:
+    if args.bfm == True or zero_raised == True:
         print(get_vhdl_record_bfm(data['ports'], data['entity']))
-    if args.driver == True:
+    if args.driver == True or zero_raised == True:
         print(get_vhdl_process_inputs(data['ports']))
-    if args.scorer == True:
+    if args.scorer == True or zero_raised == True:
         print(get_vhdl_process_outputs(data['ports'], data['entity']))
-
     pass
+
+
+def read(logfile: str, level: int) -> str:
+    # process the log file
+    lg = log.Log.load(logfile)
+
+    result: str = ''
+    for event in lg.get_outcomes():
+        event: log.Record
+        # print all bad outcomes
+        if event._level.value >= level:
+            result += str(event) + '\n'
+        pass
+    
+    return result
+
+
+def check(logfile: str, covfile: str) -> bool:
+    '''
+    Checks if there were any errors in the simulation
+    '''
+    lg = log.Log.load(logfile)
+    if lg.is_success() == False:
+        print(read(logfile, log.Level.WARN.value))
+    print('Score:', str(lg.get_score()), '%', '('+str(lg.get_pass_count())+'/'+str(lg.get_test_count())+')')
+    return lg.is_success()
 
 
 def get_vhdl_process_inputs(ports):

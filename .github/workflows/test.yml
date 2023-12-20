@@ -77,7 +77,10 @@ jobs:
         run: |
           orbit plan --clean --plugin ghdl --top parity
           orbit b
+          veriti check --log ./build/ghdl/results.log
           orbit plan --clean --plugin ghdl --top add
           orbit b
+          veriti check --log ./build/ghdl/results.log
           orbit plan --clean --plugin ghdl --top bcd_enc
           orbit b
+          veriti check --log ./build/ghdl/results.log
