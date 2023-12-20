@@ -73,14 +73,20 @@ jobs:
         run: |
           orbit init
 
-      - name: Run tests
+      - name: Test parity module
         run: |
           orbit plan --clean --plugin ghdl --top parity
           orbit b
           veriti check --log ./build/ghdl/results.log
+
+      - name: Test add module
+        run: |
           orbit plan --clean --plugin ghdl --top add
           orbit b
           veriti check --log ./build/ghdl/results.log
+          
+      - name: Test BCD encoder module
+        run: |
           orbit plan --clean --plugin ghdl --top bcd_enc
           orbit b
           veriti check --log ./build/ghdl/results.log
