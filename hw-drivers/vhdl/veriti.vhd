@@ -83,7 +83,7 @@ package body veriti is
 
     procedure complete(signal halt: out boolean) is
     begin
-        report "Simulation complete";
+        -- report "Simulation complete";
         halt <= true;
         wait;
     end procedure;

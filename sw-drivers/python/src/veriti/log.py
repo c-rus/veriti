@@ -282,6 +282,32 @@ class Log:
     pass
 
 
+def read(logfile: str, level: int) -> str:
+    # process the log file
+    lg = Log.load(logfile)
+
+    result: str = ''
+    for event in lg.get_outcomes():
+        event: Record
+        # print all bad outcomes
+        if event._level.value >= level:
+            result += str(event) + '\n'
+        pass
+    
+    return result
+
+
+def check(logfile: str, covfile: str) -> bool:
+    '''
+    Checks if there were any errors in the simulation
+    '''
+    lg = Log.load(logfile)
+    if lg.is_success() == False:
+        print(read(logfile, Level.WARN.value))
+    print('Score:', str(lg.get_score()), '%', '('+str(lg.get_pass_count())+'/'+str(lg.get_test_count())+')')
+    return lg.is_success()
+
+
 import unittest as _ut
 
 
