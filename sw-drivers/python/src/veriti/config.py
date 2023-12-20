@@ -20,5 +20,7 @@ LOG_TIMESTAMP_R_TOKEN = ']'
 LOG_CAUSE_L_TOKEN = '\"'
 LOG_CAUSE_R_TOKEN = '\"'
 
+TAB_SIZE = 2
+
 def TAB(n: int):
-    return (' ' * 4) * n
+    return (' ' * TAB_SIZE) * n
