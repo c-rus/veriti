@@ -46,6 +46,8 @@ architecture bench of t1_tb is
     signal reset : std_logic;
     signal halt  : boolean := false;
 
+    file events : text open write_mode is "results.log";
+
 begin
     -- unit-under-test
     DUT : entity work.t1 
@@ -99,7 +101,7 @@ begin
 
         -- @note: auto-generate procedure from python script because that is where
         -- order is defined for test vector outputs
-        procedure score_transaction(file fd: text) is
+        procedure score_transaction(file fd: text; file ld: text) is
             variable row : line;
             variable ideal_tx : std_logic;
         begin
@@ -107,7 +109,7 @@ begin
                 -- compare expected outputs and inputs
                 readline(fd, row);
                 load(row, ideal_tx);
-                assert_eq(tx, ideal_tx, "tx");
+                log_assertion(ld, tx, ideal_tx, "tx");
             end if;
         end procedure;
 
@@ -116,10 +118,9 @@ begin
 
         while endfile(outputs) = false loop
             -- wait for a valid time to check
-            monitor(clk, valid, TIMEOUT_LIMIT, timeout);
-            assert timeout = false report "Timeout violation" severity failure;
+            log_monitor(events, clk, valid, TIMEOUT_LIMIT, timeout, "valid");
             -- compare outputs
-            score_transaction(outputs);
+            score_transaction(outputs, events);
             wait until rising_edge(clk);
         end loop;
 
