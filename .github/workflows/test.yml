@@ -77,16 +77,16 @@ jobs:
         run: |
           orbit plan --clean --plugin ghdl --top parity
           orbit b
-          veriti check --log ./build/ghdl/results.log
+          veriti check --log ./build/ghdl/events.log
 
       - name: Test add module
         run: |
           orbit plan --clean --plugin ghdl --top add
           orbit b
-          veriti check --log ./build/ghdl/results.log
+          veriti check --log ./build/ghdl/events.log
 
       - name: Test BCD encoder module
         run: |
           orbit plan --clean --plugin ghdl --top bcd_enc
           orbit b -- -g LEN=8
-          veriti check --log ./build/ghdl/results.log
+          veriti check --log ./build/ghdl/events.log

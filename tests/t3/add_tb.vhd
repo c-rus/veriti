@@ -32,7 +32,7 @@ architecture sim of add_tb is
     --! declare internal required testbench signals
     constant TIMEOUT_LIMIT : natural := 1000;
 
-    file results : text open write_mode is "results.log";
+    file events : text open write_mode is "events.log";
 
 begin
     -- instantiate UUT
@@ -101,7 +101,7 @@ begin
             -- wait for a valid time to check
             wait until rising_edge(clk);
             -- compare outputs
-            log_transaction(results, outputs);
+            log_transaction(events, outputs);
         end loop;
 
         -- halt the simulation

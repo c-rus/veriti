@@ -39,7 +39,7 @@ architecture bench of parity_tb is
 
     signal halt: boolean := false;
 
-    file results : text open write_mode is "results.log";
+    file events : text open write_mode is "events.log";
 
 begin
     --! UUT instantiation
@@ -88,7 +88,7 @@ begin
             wait for DELAY;
 
             --! read expected outputs and store outcomes
-            score(outputs, results);
+            score(outputs, events);
         end loop;
 
         -- halt the simulation

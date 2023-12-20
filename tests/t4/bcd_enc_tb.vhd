@@ -35,7 +35,7 @@ architecture sim of bcd_enc_tb is
     --! declare internal required testbench signals
     constant TIMEOUT_LIMIT: natural := 1_000;
 
-    file events: text open write_mode is "results.log";
+    file events: text open write_mode is "events.log";
 
 begin
     -- instantiate UUT
@@ -68,9 +68,9 @@ begin
                 -- drive a transaction
                 readline(fd, row);
                 veriti.drive(row, bfm.go);
-                -- veriti.log_event(results, veriti.TRACE, "DRIVE", "go - " & casting.to_str(bfm.go));
+                -- veriti.log_event(events, veriti.TRACE, "DRIVE", "go - " & casting.to_str(bfm.go));
                 veriti.drive(row, bfm.bin);
-                -- veriti.log_event(results, veriti.TRACE, "DRIVE", "bin - " & casting.to_str(bfm.bin));
+                -- veriti.log_event(events, veriti.TRACE, "DRIVE", "bin - " & casting.to_str(bfm.bin));
             end if;
         end procedure; 
 

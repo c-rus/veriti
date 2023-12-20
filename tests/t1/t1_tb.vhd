@@ -46,7 +46,7 @@ architecture bench of t1_tb is
     signal reset : std_logic;
     signal halt  : boolean := false;
 
-    file events : text open write_mode is "results.log";
+    file events : text open write_mode is "events.log";
 
 begin
     -- unit-under-test
