@@ -61,7 +61,7 @@ begin
     spin_clock(clk, 40 ns, halt);
 
     --! test reading a file filled with test vectors
-    DRIVER : process
+    PRODUCER : process
         file inputs : text open read_mode is "inputs.trace";
 
         -- @note: auto-generate procedure from python script because that is where
@@ -95,7 +95,7 @@ begin
         wait;
     end process;
 
-    CHECKER : process
+    CONSUMER : process
         file outputs : text open read_mode is "outputs.trace";
         variable timeout : boolean;
 
@@ -123,6 +123,12 @@ begin
             score_transaction(outputs, events);
             wait until rising_edge(clk);
         end loop;
+
+        -- use a custom log record (demonstrates filtering of topic too)
+        log_event(events, TRACE, "SOME EVENT", "manual capture");
+        
+        -- force an ERROR assertion into log
+        log_assertion(events, valid, '0', "valid");
 
         -- halt the simulation
         complete(halt);

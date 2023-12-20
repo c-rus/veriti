@@ -209,6 +209,7 @@ package body veriti is
 
     procedure log_event(file fd: text; sev: log_level; topic: string; cause: string) is
         variable row : line;
+        variable topic_filtered : string(topic'range);
         constant TIMESTAMP_SHIFT : positive := 15;
         constant LOGLEVEL_SHIFT : positive := 8;
         constant TOPIC_SHIFT : positive := 12;
@@ -238,7 +239,16 @@ package body veriti is
 
         -- write the topic ("what")
         write(row, ' ');
-        write(row, topic, left, TOPIC_SHIFT);
+        -- filter the topic to prevent illegal characters from messing up format
+        topic_filtered := topic;
+        for ii in topic'range loop
+            if topic(ii) = '"' then
+                topic_filtered(ii) := '_';
+            elsif topic(ii) = ' ' then
+                topic_filtered(ii) := '_';
+            end if;
+        end loop;
+        write(row, topic_filtered, left, TOPIC_SHIFT);
         write(row, ' ');
 
         -- write the root cause ("how")
