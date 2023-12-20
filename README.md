@@ -54,7 +54,7 @@ The workflow is broken down into 3 main steps:
 
 2. Run hardware simulation to read/parse inputs and outputs and record outcomes into a log file using `veriti` hardware drivers.
 
-3. Run a software program (`veriti`) to interpret/analyze outcomes stored in log file.
+3. Run a software program (`veriti`) to interpret/analyze outcomes stored in log file. If all tests passed, then the program exits with code `0`. If any tests failed, then the program exits with code `101`.
 
 When the software model is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, which are either `Coverpoints` or `Covergroups`.
 
