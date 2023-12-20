@@ -145,7 +145,7 @@ begin
             when S_WAIT =>
                 done <= '1';
                 -- uncomment this line to see stability errors
-                bcd <= (others => '0');
+                -- bcd <= (others => '0');
                 ovfl_d <= '0';
                 state_d <= S_LOAD;
 
