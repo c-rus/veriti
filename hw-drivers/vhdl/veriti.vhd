@@ -72,7 +72,7 @@ package veriti is
 
     type log_level is (TRACE, DEBUG, INFO, WARN, ERROR, FATAL);
 
-    procedure log(file fd: text; sev: log_level; topic: string; cause: string);
+    procedure log_event(file fd: text; sev: log_level; topic: string; cause: string);
     
     procedure log_monitor(file fd: text; signal clk: std_logic; signal flag: std_logic; cycles: natural; variable timeout: out boolean; cause: string);
     
@@ -276,7 +276,7 @@ package body veriti is
 
     -- LOGGING FUNCTIONS
 
-    procedure log(file fd: text; sev: log_level; topic: string; cause: string) is
+    procedure log_event(file fd: text; sev: log_level; topic: string; cause: string) is
         variable row : line;
         constant TIMESTAMP_SHIFT : positive := 15;
         constant LOGLEVEL_SHIFT : positive := 8;
@@ -334,7 +334,7 @@ package body veriti is
             while cycle_count < cycle_limit loop
                 if flag = '1' then
                     timeout := false;
-                    log(fd, INFO, "TIMEOUT", cause & " - required " & integer'image(cycle_count) & " cycles");
+                    log_event(fd, INFO, "MONITOR", cause & " - required " & integer'image(cycle_count) & " cycles");
                     return;
                 end if;
                 -- necessary ordering to escape at correct time in simulation
@@ -345,16 +345,16 @@ package body veriti is
             end loop;
         end if;
         -- reached this point, then a violation has occurred
-        log(fd, ERROR, "TIMEOUT", cause & " - never asserted after waiting " & integer'image(cycles) & " cycles");
+        log_event(fd, ERROR, "MONITOR", cause & " - never asserted after waiting " & integer'image(cycles) & " cycles");
     end procedure;
 
 
     procedure log_assertion(file fd: text; received: std_logic; expected: std_logic; cause: string) is
     begin
         if received /= expected then
-            log(fd, ERROR, "ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
+            log_event(fd, ERROR, "ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
         else 
-            log(fd, INFO, "ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
+            log_event(fd, INFO, "ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
         end if;
     end procedure;
 
@@ -362,9 +362,9 @@ package body veriti is
     procedure log_assertion(file fd: text; received: std_logic_vector; expected: std_logic_vector; cause: string) is
     begin
         if received /= expected then
-            log(fd, ERROR, "ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
+            log_event(fd, ERROR, "ASSERTION", cause & " - received " & casting.to_str(received) & " does not match expected " & casting.to_str(expected));
         else 
-            log(fd, INFO, "ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
+            log_event(fd, INFO, "ASSERTION", cause & " - received " & casting.to_str(received) & " matches expected " & casting.to_str(expected));
         end if;
     end procedure;
 
@@ -380,13 +380,13 @@ package body veriti is
             -- check if its been stable since the rising edge of done
             if vec_prev /= vec then
                 is_okay := false;
-                log(fd, ERROR, "STABILITY", cause & " - updated value " & casting.to_str(vec) & " lost stability of " & casting.to_str(vec_prev));
+                log_event(fd, ERROR, "STABILITY", cause & " - updated value " & casting.to_str(vec) & " lost stability of " & casting.to_str(vec_prev));
             end if;
 
             wait until rising_edge(clk);
         end loop;
             if is_okay = true then
-                log(fd, INFO, "STABILITY", cause & " - maintained stability at " & casting.to_str(vec_prev));
+                log_event(fd, INFO, "STABILITY", cause & " - maintained stability at " & casting.to_str(vec_prev));
             end if;
     end procedure;
 

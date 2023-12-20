@@ -35,7 +35,7 @@ architecture sim of bcd_enc_tb is
     --! declare internal required testbench signals
     constant TIMEOUT_LIMIT: natural := 1_000;
 
-    file results: text open write_mode is "results.log";
+    file events: text open write_mode is "results.log";
 
 begin
     -- instantiate UUT
@@ -68,9 +68,9 @@ begin
                 -- drive a transaction
                 readline(fd, row);
                 veriti.drive(row, bfm.go);
-                -- veriti.log(results, veriti.TRACE, "DRIVE", "go - " & casting.to_str(bfm.go));
+                -- veriti.log_event(results, veriti.TRACE, "DRIVE", "go - " & casting.to_str(bfm.go));
                 veriti.drive(row, bfm.bin);
-                -- veriti.log(results, veriti.TRACE, "DRIVE", "bin - " & casting.to_str(bfm.bin));
+                -- veriti.log_event(results, veriti.TRACE, "DRIVE", "bin - " & casting.to_str(bfm.bin));
             end if;
         end procedure; 
 
@@ -94,7 +94,7 @@ begin
         file outputs: text open read_mode is "outputs.trace";
         variable timeout: boolean;
 
-        procedure score(file ld: text; file fd: text) is
+        procedure score(file fd: text; file ld: text) is
             variable row: line;
             variable expct: bcd_enc_bfm;
         begin
@@ -120,10 +120,10 @@ begin
             -- @todo: have better handling of monitor process (WIP, might be good now)
 
             -- wait for a valid time to check
-            veriti.log_monitor(results, clk, bfm.done, TIMEOUT_LIMIT, timeout, "done being asserted");
+            veriti.log_monitor(events, clk, bfm.done, TIMEOUT_LIMIT, timeout, "done being asserted");
 
             -- compare outputs
-            score(results, outputs);
+            score(outputs, events);
             -- wait for done to be lowered before starting monitor
             wait until falling_edge(bfm.done);
         end loop;
@@ -133,6 +133,6 @@ begin
     end process;
 
     -- concurrent captures of simulation
-    veriti.log_stability(results, clk, bfm.done, bfm.bcd, "bcd depending on done");
+    veriti.log_stability(events, clk, bfm.done, bfm.bcd, "bcd depending on done");
 
 end architecture;
