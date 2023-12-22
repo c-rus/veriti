@@ -104,11 +104,11 @@ begin
                 veriti.load(row, expct.bcd);
                 veriti.log_assertion(ld, bfm.bcd, expct.bcd, "bcd");
 
-                veriti.load(row, expct.ovfl);
-                veriti.log_assertion(ld, bfm.ovfl, expct.ovfl, "ovfl");
-
                 veriti.load(row, expct.done);
                 veriti.log_assertion(ld, bfm.done, expct.done, "done");
+                
+                veriti.load(row, expct.ovfl);
+                veriti.log_assertion(ld, bfm.ovfl, expct.ovfl, "ovfl");
             end if;
         end procedure;
         

@@ -5,13 +5,48 @@
 #   Provides interface between client and veriti as a command-line application.
 #
 
-import argparse, json
+import argparse
 from . import config
 from . import log
 from . import __version__
+from . import lib
+
+
+class Generic:
+
+    def __init__(self, key: str, val: str):
+        self.key = key
+        self.val = val
+        pass
+    pass
+
+
+    @classmethod
+    def from_str(self, s: str):
+        # split on equal sign
+        words = s.split('=', 1)
+        if len(words) != 2:
+            return None
+        return Generic(words[0], words[1])
+    
+
+    @classmethod
+    def from_arg(self, s: str):
+        result = Generic.from_str(s)
+        if result is None:
+            msg = "Generic "+'\"' + s + '\"'+" is missing <value>"
+            raise argparse.ArgumentTypeError(msg)
+        return result
+
+
+    def to_str(self) -> str:
+        return self.key+'='+self.val
+    
+    pass
 
 
 def main():
+    import random, sys
     parser = argparse.ArgumentParser(prog='veriti', allow_abbrev=False)
     parser.add_argument('--version', action='version', version=__version__.VERSION)
 
@@ -36,9 +71,19 @@ def main():
 
     parser_check.add_argument('--log', type=str, help='path to log file')
     parser_check.add_argument('--cov', type=str, help='path to coverage file')
-    
-    args: argparse.Namespace = parser.parse_args()
 
+    # subcommand: 'run'
+    parser_run = sub_parsers.add_parser('run', help='execute the software model')
+
+    parser_run.add_argument('script', action='store', type=str, help='path to the python model script')
+    parser_run.add_argument('--generic', '-g', action='append', type=Generic.from_arg, default=[], metavar='KEY=VALUE', help='override top-level HDL generics')
+    parser_run.add_argument('--seed', action='store', type=int, nargs='?', default=None, const=random.randrange(sys.maxsize), metavar='NUM', help='set the randomness seed')
+    parser_run.add_argument('--if', dest='design_if', action='store', type=str, metavar='JSON', help='interface data for the design-under-test')
+    parser_run.add_argument('--tb-if', dest='bench_if', action='store', type=str, metavar='JSON', help='interface data for the testbench')
+    parser_run.add_argument('--work-dir', action='store', type=str, metavar='PATH', help='set the working directory')
+
+    args = parser.parse_args()
+    
     # branch on subcommand
     sc = args.subcommand
     if sc == 'make':
@@ -55,15 +100,27 @@ def main():
             print('Failed verification')
             exit(101)
         pass
+    elif sc == 'run':
+        run(args)
     elif sc == None:
         parser.print_help()
         pass
     pass
 
 
+def run(args: argparse.Namespace):
+    # initialize the state of veriti
+    lib.set(design_if=args.design_if, bench_if=args.bench_if, work_dir=args.work_dir, seed=args.seed, generics=args.generic)
+    import runpy
+    # run the python model script in its own namespace
+    runpy.run_path(args.script, init_globals={})
+    pass
+
+
 def make(args: argparse.Namespace):
+    import json
     # process the json data
-    data = json.loads(args.json)
+    design_if = json.loads(args.json)
 
     # when creating driver and scorer, also grab list of port names (in their assembled order)
     # so it synchronizes with which bit is which each line
@@ -74,11 +131,11 @@ def make(args: argparse.Namespace):
     # create a function/command to take in a log file and coverage file to perform post-simulation analysis
     # and provide a meaningful exit code and messages
     if args.bfm == True or zero_raised == True:
-        print(get_vhdl_record_bfm(data['ports'], data['entity']))
+        print(get_vhdl_record_bfm(design_if['ports'], design_if['entity']))
     if args.send == True or zero_raised == True:
-        print(get_vhdl_process_inputs(data['ports']))
+        print(get_vhdl_process_inputs(design_if['ports']))
     if args.score == True or zero_raised == True:
-        print(get_vhdl_process_outputs(data['ports'], data['entity']))
+        print(get_vhdl_process_outputs(design_if['ports'], design_if['entity']))
     pass
 
 

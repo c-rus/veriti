@@ -12,22 +12,20 @@
 
 import veriti as vi
 from typing import List
-from veriti.coverage import Coverage, Covergroup, Coverpoint
-from veriti.model import SuperBfm, Signal, Mode
+from veriti.trace import InputTrace, OutputTrace
+from veriti.model import SuperBfm, Signal
 import random
 
 # --- Constants ----------------------------------------------------------------
 
 # define the randomness seed
-R_SEED = vi.get_seed(0)
+R_SEED = vi.seed(0)
 
-# collect generics from command-line and HDL testbench
-GENS = vi.get_generics()
+# collect generics
+SIZE: int = vi.get_generic('SIZE', type=int)
+EVEN_PARITY: bool = vi.get_generic('EVEN_PARITY', type=bool)
 
-WIDTH: int = vi.cast.from_vhdl_int(GENS['SIZE'])
-EVEN_PARITY: bool = vi.cast.from_vhdl_bool(GENS['EVEN_PARITY'])
-
-MAX_SIMS = 10_000
+MAX_SIMS = 256
 
 # --- Functions ----------------------------------------------------------------
 
@@ -50,9 +48,10 @@ class Bfm(SuperBfm):
     entity = 'parity'
 
     def __init__(self):
-        self.data = Signal(Mode.INPUT, WIDTH)
-
-        self.check_bit = Signal(Mode.OUTPUT)
+        # inputs
+        self.data = Signal(width=SIZE)
+        # outputs
+        self.check_bit = Signal()
         pass
 
 
@@ -60,6 +59,7 @@ class Bfm(SuperBfm):
         self.check_bit.set(0)
         # cast into a `List[int]` type
         vec = [int(x) for x in self.data.as_logic()]
+
         if set_parity_bit(vec, use_even=EVEN_PARITY) == True:
             self.check_bit.set(1)
             
@@ -71,13 +71,13 @@ class Bfm(SuperBfm):
 random.seed(R_SEED)
 
 # create empty test vector files
-i_file = vi.InputTrace()
-o_file = vi.OutputTrace()
+i_file = InputTrace()
+o_file = OutputTrace()
 
 # generate test cases until total coverage is met or we reached max count
 for _ in range(0, MAX_SIMS):
     # create a new input to enter through the algorithm
-    txn = Bfm().rand()
-    i_file.write(txn)
-    o_file.write(txn.evaluate())
+    txn = Bfm().randomize()
+    i_file.append(txn)
+    o_file.append(txn.evaluate())
     pass

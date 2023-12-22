@@ -8,27 +8,42 @@ class InputTrace:
         '''
         Creates an input test vector file in write mode.
         '''
-        self._file = open(fname, mode)
+        import os
+        self._path = os.path.join(config.Config()._working_dir, fname)
+        # create a new file
+        open(self._path, 'w').close()
         self._verbose = verbose
         self._empty = True
         pass
 
 
-    def write(self, bfm: model.SuperBfm):
+    def append(self, bfm: model.SuperBfm):
         '''
-        Writes the inputs of the bus functional model to the input test vector file.
+        Writes the inputs of the bus funcitonal model to the output test vector file.
+
+        Format each signals as logic values in the file to be read in during
+        simulation.
+
+        The format uses commas (`,`) to separate different signals and the order of signals
+        written matches the order of ports in the interface json data.
+
+        Each value is written with a ',' after the preceeding value in the 
+        argument list. A newline is formed after all arguments
         '''
-        if issubclass(type(bfm), model.SuperBfm) == True:
-            if self._verbose == True and self._empty == True:
-                self._file.write('# ')
-                for io in bfm.get_ports(mode=model.Mode.INPUT):
-                    self._file.write(str(io[0]) + ', ')
-                self._file.write('\n')
+        DELIM = ','
+        NEWLINE = '\n'
+        if issubclass(type(bfm), model.SuperBfm):
+            with open(self._path, 'a') as fd:
+                ports = bfm.get_ports(mode=model.Mode.INPUT)
+                for (_name, port) in ports:
+                    fd.write(str(port.as_logic()) + DELIM)
+                fd.write(NEWLINE)
                 pass
-            bfm.send(self._file, mode=model.Mode.INPUT)
-            self._empty = False
+            pass
         else:
-            print('WARNING: Tried to write invalid type to input test vector file')
+            print('warning: Tried to write invalid type to output test vector file')
+        pass
+
     pass
 
 
@@ -37,23 +52,40 @@ class OutputTrace:
         '''
         Creates an output test vector file in write mode.
         '''
-        self._file = open(fname, mode)
+        import os
+        self._path = os.path.join(config.Config()._working_dir, fname)
+        # create a new file
+        open(self._path, 'w').close()
         self._verbose = verbose
         self._empty = True
+        pass
 
 
-    def write(self, bfm: model.SuperBfm):
+    def append(self, bfm: model.SuperBfm):
         '''
         Writes the outputs of the bus funcitonal model to the output test vector file.
+
+        Format each signals as logic values in the file to be read in during
+        simulation.
+
+        The format uses commas (`,`) to separate different signals and the order of signals
+        written matches the order of ports in the interface json data.
+
+        Each value is written with a ',' after the preceeding value in the 
+        argument list. A newline is formed after all arguments
         '''
+        DELIM = ','
+        NEWLINE = '\n'
         if issubclass(type(bfm), model.SuperBfm):
-            if self._verbose == True and self._empty == True:
-                self._file.write('# ')
-                for io in bfm.get_ports(mode=model.Mode.OUTPUT):
-                    self._file.write(str(io[0]) + ', ')
-                self._file.write('\n')
+            with open(self._path, 'a') as fd:
+                ports = bfm.get_ports(mode=model.Mode.OUTPUT)
+                for (_name, port) in ports:
+                    fd.write(str(port.as_logic()) + DELIM)
+                fd.write(NEWLINE)
                 pass
-            bfm.send(self._file, mode=model.Mode.OUTPUT)
+            pass
         else:
-            print('WARNING: Tried to write invalid type to output test vector file')
+            print('warning: Tried to write invalid type to output test vector file')
+        pass
+
     pass

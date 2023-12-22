@@ -11,24 +11,24 @@
 import random
 import veriti as vi
 from veriti.coverage import Coverage, Covergroup, Coverpoint
-from veriti.model import SuperBfm, Signal, Mode
+from veriti.model import SuperBfm, Signal
+from veriti.trace import InputTrace, OutputTrace
 
 # --- Constants ----------------------------------------------------------------
 
-# define the randomness seed
-R_SEED = vi.get_seed(0)
+# initialize the randomness seed
+random.seed(vi.seed(0))
 
-# collect generics from command-line and HDL testbench
-GENS = vi.get_generics()
+# collect generics
+WIDTH = vi.get_generic(key='LEN', type=int)
 
 MAX_SIMS = 10_000
-
-# set/collect generics
-WIDTH  = int(GENS['LEN'])
 
 # --- Coverage Goals -----------------------------------------------------------
 
 # specify coverage areas
+
+BIN_DIV = 16 if WIDTH > 16 else WIDTH
 
 # make sure cin is asserted at least 100 times
 cp_cin_asserted = Coverpoint(
@@ -55,18 +55,18 @@ cg_in1_extremes = Covergroup(
 # @todo: use 'max_bins' arg to limit bin counting (%)
 cg_in0_full = Covergroup(
     "in0 full",
-    bins=[i for i in range(0, 16)],
+    bins=[i for i in range(0, BIN_DIV)],
     goal=1,
 )
 cg_in1_full = Covergroup(
     "in1 full",
-    bins=[i for i in range(0, 16)],
+    bins=[i for i in range(0, BIN_DIV)],
     goal=1,
 )
 # make sure all combinations of input bins are tested at least once
 cg_in0_cross_in1 = Covergroup(
     "in0 cross in1",
-    bins=[(x, y) for x in range(0, 16) for y in range(0, 16)],
+    bins=[(x, y) for x in range(0, BIN_DIV) for y in range(0, BIN_DIV)],
     goal=1,
 )
 # Check to make sure both inputs are 0 or the max value at the same time.
@@ -88,19 +88,21 @@ cp_in0_in1_eq_max  = Coverpoint(
 class Bfm(SuperBfm):
     entity = 'add'
 
-    def __init__(self):
-        self.in0 = Signal(Mode.INPUT, WIDTH)
-        self.in1 = Signal(Mode.INPUT, WIDTH)
-        self.cin = Signal(Mode.INPUT)
-
-        self.sum = Signal(Mode.OUTPUT, WIDTH)
-        self.cout = Signal(Mode.OUTPUT)
+    def __init__(self, width: int):
+        # inputs
+        self.in0 = Signal(width=width)
+        self.in1 = Signal(width=width)
+        self.cin = Signal()
+        # outputs
+        self.sum = Signal(width=width)
+        self.cout = Signal()
         pass
 
 
     def evaluate(self):
         result = self.in0.as_int() + self.in1.as_int() + self.cin.as_int()
-        temp = Signal(width=WIDTH+1, value=result).as_logic()
+        temp = Signal(width=self.in0.width()+1, value=result, big_endian=True).as_logic()
+        # slice and dice
         self.sum.set(temp[1:])
         self.cout.set(temp[0])
 
@@ -108,25 +110,24 @@ class Bfm(SuperBfm):
         return self
     pass
 
-
 # --- Logic --------------------------------------------------------------------
 
-random.seed(R_SEED)
-
 # create empty test vector files
-i_file = vi.InputTrace()
-o_file = vi.OutputTrace()
+i_file = InputTrace()
+o_file = OutputTrace()
+
+model = Bfm(width=WIDTH)
 
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    txn = Bfm().rand()
+    txn = model.randomize()
 
     # prioritize reaching coverage for all possible inputs first
     if cg_in0_full.passed() == False:
-        txn.in0.set(int(cg_in0_full.next(rand=True) % 16))
+        txn.in0.set(int(cg_in0_full.next(rand=True) % WIDTH))
     elif cg_in1_full.passed() == False:
-        txn.in1.set(int(cg_in1_full.next(rand=True) % 16))
+        txn.in1.set(int(cg_in1_full.next(rand=True) % WIDTH))
     # generate random numbers that exceed sum vector
     elif cp_cout_gen.passed() == False:
         txn.in0.set(random.randint(1, txn.in0.max()))
@@ -162,18 +163,18 @@ while Coverage.all_passed(MAX_SIMS) == False:
     cp_cin_asserted.cover(txn.cin.as_int() == 1)
 
     # write each transaction to the input file
-    i_file.write(txn)
+    i_file.append(txn)
 
     # compute expected values to send to simulation
-    o_file.write(txn.evaluate())
+    o_file.append(txn.evaluate())
     pass
 
 print()
-print('Seed:', R_SEED)
+print('Seed:', vi.seed())
 print("Valid Transaction Count:", Coverage.count())
 print("Coverage:", Coverage.percent(), "%")
 # display quick summary coverage statistics
-print(Coverage.report(False))
+print(Coverage.report(verbose=False))
 
 # write the full coverage stats to a text file
-Coverage.save_report("coverage.txt")
+Coverage.save_report()

@@ -1,0 +1,46 @@
+{
+  "entity": "add",
+  "generics": [
+    {
+      "name": "LEN",
+      "mode": "in",
+      "type": "positive",
+      "default": null
+    }
+  ],
+  "ports": [
+    {
+      "name": "cin",
+      "mode": "in",
+      "type": "std_logic",
+      "default": null
+    },
+    {
+      "name": "in0",
+      "mode": "in",
+      "type": "std_logic_vector(LEN-1 downto 0)",
+      "default": null
+    },
+    {
+      "name": "in1",
+      "mode": "in",
+      "type": "std_logic_vector(LEN-1 downto 0)",
+      "default": null
+    },
+    {
+      "name": "sum",
+      "mode": "out",
+      "type": "std_logic_vector(LEN-1 downto 0)",
+      "default": null
+    },
+    {
+      "name": "cout",
+      "mode": "out",
+      "type": "std_logic",
+      "default": null
+    }
+  ],
+  "architectures": [
+    "rtl"
+  ]
+}

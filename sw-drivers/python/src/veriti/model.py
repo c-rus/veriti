@@ -11,22 +11,39 @@ class Mode(_Enum):
     OUTPUT = 1
     INOUT  = 2
     LOCAL  = 3
+    # allow the interface data to decide what mode this signal is
+    INFER = 4
+
+    @staticmethod
+    def from_str(s: str):
+        s = s.lower()
+        if s == 'in':
+            return Mode.INPUT
+        elif s == 'out':
+            return Mode.OUTPUT
+        elif s == 'inout':
+            return Mode.INOUT
+        else:
+            return Mode.LOCAL
+ 
     pass
 
 
 class Signal:
 
-    def __init__(self, mode: Mode=Mode.LOCAL, width: int=None, value=0, downto: _Tuple[str, str]=None, to: _Tuple[str, str]=None):
+    def __init__(self, width: int=None, value=0, mode: Mode=Mode.INFER, big_endian:bool=True, name: str=None):
         self._mode = mode
-        self._is_single = True if width == None else False
         self._width = width if width != None else 1
         if self._width <= 0:
-            print('WARNING: Signal cannot have width less than or equal to 0')
+            print('warning: Signal cannot have width less than or equal to 0')
+            self._width = 1
+        # provide an initialized value
         self._value = 0
-        self.set(value)
-        # store values for writing the VHDL record
-        self._downto = downto
-        self._to = to
+        self.set(value, is_signed=False)
+        # specify the order of the bits (big-endian is MSB first)
+        self._big_endian = big_endian
+        # provide an explicit name to search up in design interface
+        self._name = name
         pass
 
 
@@ -60,13 +77,6 @@ class Signal:
         return self._width
     
 
-    def is_single_ended(self):
-        '''
-        Checks if the signal is not an array-type.
-        '''
-        return self._is_single
-    
-
     def rand(self):
         '''
         Sets the data to a random value between 'min()' and 'max()', inclusively.
@@ -84,10 +94,12 @@ class Signal:
 
     def as_logic(self) -> str:
         '''
-        Casts the data into a series of 1's and 0's in a string. The MSB
-        is represented on the LHS (index 0).
+        Casts the data into a series of 1's and 0's in a string. 
+        
+        If the signal is 'big-endian', then the MSB is first in the sequence. 
+        Otherwise, the LSB is first in the sequence.
         '''
-        return to_logic(self.as_int(), self.width())
+        return to_logic(self.as_int(), self.width(), big_endian=self._big_endian)
     
 
     def set(self, num, is_signed=False):
@@ -112,15 +124,15 @@ class Signal:
             print('WARNING: Invalid type attempting to set signal value')
 
     
-    def set_bit(self, index: int, bit, downto: bool=True):
+    def set_bit(self, index: int, bit):
         '''
         Modify the bit at `index` in the vector. 
         
-        Setting `downto` to false will count the vector from left to right, 
-        0 to len-1. Setting `downto` to true will the count the vector right 
+        Signals that are not 'big-endian' will count the vector from left to right, 
+        0 to len-1. Signals that are 'big-endian' will the count the vector right 
         to left.
         '''
-        diff: int = 2*index if downto == False else self.width()-1
+        diff: int = 2*index if self._big_endian == False else self.width()-1
         bit: str = '1' if int(bit) == 1 else '0'
 
         result = ''
@@ -129,19 +141,19 @@ class Signal:
                 result += bit
             else:
                 result += elem
-        self.set(result)
+        self.set(result, is_signed=False)
         pass
 
 
-    def get_bit(self, index: int, downto: bool=True) -> str:
+    def get_bit(self, index: int) -> str:
         '''
         Access the bit at `index` in the vector.
 
-        Setting `downto` to false will count the vector from left to right, 
-        0 to len-1. Setting `downto` to true will the count the vector right 
+        Signals that are not 'big-endian' will count the vector from left to right, 
+        0 to len-1. Signals that are 'big-endian' will the count the vector right 
         to left.
         '''
-        diff: int = 2*index if downto == False else self.width()-1
+        diff: int = 2*index if self._big_endian == False else self.width()-1
         return self.as_logic()[diff-index]
         
 
@@ -152,7 +164,7 @@ class Signal:
     
 
     def __key(self):
-        return (self._width, self._value, self._is_single)
+        return (self._width, self._value)
 
 
     def __hash__(self):
@@ -173,6 +185,10 @@ class Signal:
         self.set(result)
         pass
 
+
+    def __str__(self):
+        return self.as_logic()
+    
     pass
 
 
@@ -195,26 +211,30 @@ class SuperBfm(_ABC):
         pass
 
 
-    def send(self, fd, mode: Mode):
+    def compile_ports(self):
         '''
-        Format the signals as logic values in the file `fd` to be read in during
-        simulation.
-
-        The format uses commas (`,`) to separate different signals and the order of signals
-        written matches the order of instance variables in the declared class.
-
-        Each value is written with a ',' after the preceeding value in the 
-        argument list. A newline is formed after all arguments
+        Compiles the list of ports into a mapping where the 'key' is the defined name
+        and the 'value' is a tuple (Signal, Dict).
         '''
-        DELIM = ','
-        port: Signal
-        for _key, port in self.get_ports(mode=mode):
-            # write to the file
-            fd.write(port.as_logic()+DELIM)
-        # finish the transaction with a newline
-        fd.write('\n')
-        pass
-
+        # save computations
+        if hasattr(self, '_ports') == True:
+            return self._ports
+        
+        self._ports = dict()
+        for (key, val) in vars(self).items():
+            # only python variables declared as signals can be a port
+            if isinstance(val, Signal) == False:
+                continue
+            # override variable name with explicit name provided
+            defined_name = key if val._name == None else val._name
+            # check if the name is in the port interface data
+            loc = config.Config().locate_port(defined_name)
+            if loc != -1:
+                # store the interface data and the signal data together
+                self._ports[defined_name] = (val, loc)
+            pass
+        return self._ports
+        
 
     def get_ports(self, mode: Mode):
         '''
@@ -223,75 +243,37 @@ class SuperBfm(_ABC):
 
         Collects all signals tied to the Bfm if `mode` is set to `None`.
         '''
-        result = []
-        for (key, val) in vars(self).items():
-            # filter out items to be left with only the defined attributes
-            if key.startswith('_') == True or isinstance(val, Signal) == False:
+        results = []
+
+        key: str
+        sig: Signal
+        index: int
+        for (key, (sig, index)) in self.compile_ports().items():
+            use_mode = Mode.from_str(config.Config().get_port(index)['mode']) if sig.mode() == Mode.INFER else sig.mode()
+            if use_mode != mode:
                 continue
-            val: Signal
-            # only add signals with the correct direction
-            if val.mode() == mode or mode is None:
-                result += [(key, val)]
-        return result
+            results += [(index, key, sig)]
+            pass
+
+        results.sort()
+        # store tuple with (name, signal)
+        results = [(x[1], x[2]) for x in results]
+        return results
     
 
     def _get_entity(self) -> str:
         return 'uut' if self.entity is None else str(self.entity)
-    
-
-    def _identify_port_types(self, top: str=None):
-        '''
-        Calls 'Orbit' to get the list of ports as signals to generate record.
-
-        Returns a dictionary of the list of ports and their respective VHDL types.
-        '''
-        import subprocess, os
-        sigs = dict()
-        TOP = top if top != None else os.environ.get('ORBIT_TOP')
-        # check if a testbench is provided
-        if TOP == None:
-            print('WARNING: No signals to extract because no entity is set')
-        
-        # grab default values from testbench
-        command_success = True
-        try:
-            signals = subprocess.check_output(['orbit', 'get', TOP, '--signals']).decode('utf-8').strip()
-        except:
-            print('WARNING: Failed to extract signals from entity \''+TOP+'\'')
-            command_success = False
-
-        # act on the data returned from `Orbit` if successfully ran
-        if command_success == True:
-            # filter for signals
-            sig_code = []
-            line: str
-            for line in signals.splitlines():
-                i = line.find('signal ')
-                if i > -1 :
-                    sig_code += [line[i+len('signal '):line.find(';')]]
-
-            # extract the constant name
-            sig: str
-            for sig in sig_code:
-                # identify name
-                name = sig[:sig.find(' ')]
-                sigs[name] = None
-                # identify the datatype
-                d_type = sig.find(':')
-                if d_type > -1:
-                    sigs[name] = sig[d_type:sig.find(':=')+1 if sig.find(':=') > -1 else len(sig)]
-            pass
-        return sigs
 
 
-    def rand(self):
+    def randomize(self):
         '''
         Generates random input values for each attribute for the BFM. This is
         a convenience function for individually setting each signal randomly.
         '''
-        port: Signal
-        for (id, port) in self.get_ports(mode=Mode.INPUT):
-            self.__dict__[id] = Signal(port.mode(), port.width() if port.is_single_ended() == False else None).rand()
+        sig: Signal
+        for (_, sig) in self.get_ports(mode=Mode.INPUT):
+            sig.rand()
+            pass
         return self
     
 
@@ -339,24 +321,23 @@ class __Test(_ut.TestCase):
         s.set_bit(3, '1')
         self.assertEqual('1', s.as_logic()[0])
 
-        s = Signal(width=4, value="0000")
-        s.set_bit(0, '1', downto=False)
-        self.assertEqual('1', s.as_logic()[0])
-        s.set_bit(3, '1', downto=False)
-        self.assertEqual('1', s.as_logic()[3])
+        s = Signal(width=4, value="0000", big_endian=True)
+        s.set_bit(0, '1')
+        self.assertEqual('1', s[0])
+        s.set_bit(2, '1')
+        self.assertEqual('1', s[2])
+        self.assertEqual("0101", str(s))
         pass
 
     def test_get_bit(self):
         s = Signal(width=4, value="0010")
-        self.assertEqual('1', s.get_bit(1, downto=True))
-        self.assertEqual('1', s.get_bit(2, downto=False))
+        self.assertEqual('1', s.get_bit(1))
 
         s = Signal(width=4, value="1000")
-        self.assertEqual('1', s.get_bit(3, downto=True))
-        self.assertEqual('1', s.get_bit(0, downto=False))
+        self.assertEqual('1', s.get_bit(3))
 
         s = Signal(width=5, value="11110")
-        self.assertEqual('0', s.get_bit(0, downto=True))
-        self.assertEqual('0', s.get_bit(4, downto=False))
+        self.assertEqual('0', s.get_bit(0))
+        self.assertEqual('1', s.get_bit(4))
         pass
     pass

@@ -13,7 +13,6 @@ class Status(_Enum):
 
 class Coverage(_ABC):
 
-
     _group = []
     _counter = 0
 
@@ -116,10 +115,14 @@ class Coverage(_ABC):
     
 
     @staticmethod
-    def save_report(file: str):
+    def save_report(file=None):
         '''
         Writes the coverage report with verbosity to the file `file`.
         '''
+        import os
+        from . import config
+        if file == None:
+            file = os.path.join(config.Config()._working_dir, 'coverage.txt')
         with open(file, 'w') as cf:
             cf.write(Coverage.report(True))
     

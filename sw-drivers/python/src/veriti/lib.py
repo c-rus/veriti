@@ -7,9 +7,86 @@
 #
 
 import math as _math
-from typing import List as _List
+import argparse as _argparse
+from . import config
 
 # --- Classes and Functions ----------------------------------------------------
+
+def set(design_if: str=None, bench_if: str=None, work_dir: str=None, seed: int=None, generics=[]):
+    # grab singleton object
+    state = config.Config()
+
+    # read from testbench interface data
+    if bench_if != None:
+        state.read_bench_if(bench_if)
+    # read from design interface data
+    if design_if != None:
+        state.read_design_if(design_if)
+
+    if seed != None:
+        state._seed = int(seed)
+    if work_dir != None:
+        state._working_dir = str(work_dir)
+
+    # update to generics mapping
+    for g in generics:
+        state._gens[g.key] = g.val
+    
+    state._initialized = True
+    pass
+
+
+def get_generic(key: str, type=None, default=None):
+    '''
+    Accesses the generic based upon the provided `key`.
+
+    Define a type to help with converting to a Python-friendly datatype, as all
+    generics are initially stored as `str`.
+    '''
+    from . import cast
+    # verify the key exists
+    if key in config.Config()._gens:
+        value = config.Config()._gens[key]
+    else:
+        return default
+    if type == int:
+        value = cast.from_vhdl_int(value)
+    elif type == bool:
+        value = cast.from_vhdl_bool(value)
+    elif type == str:
+        value = cast.from_vhdl_str(value)
+    elif type == [int]:
+        value = cast.from_vhdl_ints(value)
+    elif type == [bool]:
+        value = cast.from_vhdl_bools(value)
+    elif type == [str]:
+        value = cast.from_vhdl_strs(value)
+    else:
+        print('warning: Unsupported casting to type:', type)
+        # do nothing
+        pass
+    return value
+
+
+def seed(default: int=None) -> int:
+    '''
+    Set and get a seed integer value and initializes the random number generator.
+
+    Parses command-line arguments for '--seed' [SEED]. If [SEED] is not given, then
+    `None` will be returned. If '--seed' is not given, then the `default` will be
+    returned.
+
+    Once the seed as been set (by this function call), it cannot be overridden.
+    '''
+    import sys, random
+    if config.Config()._seed == None:
+        config.Config()._seed = default
+    # set the seed value
+    if config.Config()._seed == None:
+        config.Config()._seed = random.randrange(sys.maxsize)
+    # initialize the random state
+    return config.Config()._seed
+
 
 def pow2m1(width: int):
     '''
@@ -37,7 +114,7 @@ def to_logic(n, width: int=None, trunc: bool=True, big_endian=True) -> str:
     - `n`: integer number or list of 1s and 0s to transform
     - `width`: specify the number of bits (never truncates) 
     - `trunc`: trim upper-most bits if width is less than required bit count
-    - `big_endian`: if true, store MSB bit first (LHS) and use range 'downto'
+    - `big_endian`: if true, store MSB bit first (LHS) in the sequence
 
     ### Returns
     - `str` of 1's and 0's
@@ -99,99 +176,6 @@ def from_logic(b: str, signed: bool=False) -> int:
         return (int('0b'+flipped, base=2)+1) * -1
     else:
         return int('0b'+b, base=2)
-    
-
-from . import config
-
-def get_seed(default: int=None) -> int:
-    '''
-    Returns a seed integer value to be used to set the random number generator.
-
-    Parses command-line arguments for '--seed' [SEED]. If [SEED] is not given, then
-    `None` will be returned. If '--seed' is not given, then the `default` will be
-    returned.
-    '''
-    import argparse, sys, random
-
-    parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument('--seed', action='store', type=int, nargs='?', default=default, const=None)
-    args, _unknown = parser.parse_known_args()
-
-    if config.__SEED is None:
-        config.__SEED = random.randrange(sys.maxsize)
-    # set the seed value
-    return args.seed if args.seed is not None else config.__SEED
-
-
-def get_generics(entity: str=None) -> dict:
-    '''
-    Fetches generics and their (optional) default values from an HDL `entity`.
-    
-    If no `entity` is provided, then it will invoke the `orbit` program to detect
-    the entity to get with the $ORBIT_BENCH environment variable.
-
-    All values returned in the dictionary are left in `str` representation with 
-    no pre-determined casting. It it the programmer's job to determine how to cast
-    the values to the Python programming language.
-
-    Generics set on the command-line override generic values found in the HDL source code
-    file. 
-
-    ### Parameters
-    - `entity`: HDL entity identifier to fetch generic interface
-
-    ### Returns
-    - dictionary of generic identifiers (`str`) as keys and optional values (`str`) as values
-    '''
-    import subprocess, os, argparse
-    gens = dict()
-    BENCH = entity if entity != None else os.environ.get('ORBIT_BENCH')
-
-    # grab default values from testbench
-    command_success = True
-    try:
-        signals = subprocess.check_output(['orbit', 'get', BENCH, '--signals']).decode('utf-8').strip()
-    except: 
-        if BENCH is not None:
-            print('warning: Failed to extract generics from entity \"'+BENCH+'\"')
-        else:
-            print('warning: No testbench set as environment variable \"ORBIT_BENCH\"')
-        command_success = False
-
-    # act on the data returned from `Orbit` if successfully ran
-    if command_success == True:
-        # filter for constants
-        gen_code = []
-        for line in signals.splitlines():
-            i = line.find('constant ')
-            if i > -1 :
-                gen_code += [line[i+len('constant '):line.find(';')]]
-
-        # extract the constant name
-        for gen in gen_code:
-            # identify name
-            name = gen[:gen.find(' ')]
-            gens[name] = None
-            # identify a default value if has one
-            def_val_i = gen.find(':= ')
-            if def_val_i > -1:
-                gens[name] = gen[def_val_i+len(':= '):]
-        pass
-
-    # override defaults with any values found on the command-line
-    parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument('-g', '--generic', action='append', nargs='*', type=str)
-    args, _unknown = parser.parse_known_args()
-    if args.generic != None:
-        arg: str
-        for arg in args.generic:
-            value = None
-            name = arg[0]
-            if arg[0].count('=') > 0:
-                name, value = arg[0].split('=', maxsplit=1)
-            gens[name] = value
-
-    return gens
 
 
 # --- Tests --------------------------------------------------------------------

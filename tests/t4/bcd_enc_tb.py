@@ -10,22 +10,18 @@
 #
 import random
 import veriti as vi
+from veriti.trace import InputTrace, OutputTrace
 from veriti.coverage import Coverage, Covergroup, Coverpoint
 from veriti.model import SuperBfm, Signal, Mode
 
 # --- Constants ----------------------------------------------------------------
 
 # define the randomness seed
-R_SEED = vi.get_seed(0)
+R_SEED = vi.seed(0)
 
-# collect generics from command-line and HDL testbench
-GENS = vi.get_generics()
-
-MAX_SIMS = 10_000
-
-# set/collect generics
-DIGITS = int(GENS['DIGITS'])
-WIDTH  = int(GENS['LEN'])
+# collect generics
+DIGITS = vi.get_generic('DIGITS', type=int)
+WIDTH  = vi.get_generic('LEN', type=int)
 
 # LEN | CYCLES
 # --- | ----------
@@ -33,6 +29,8 @@ WIDTH  = int(GENS['LEN'])
 #  4  | 9  = 4 + 5
 #  5  | 11 = 5 + 6
 FSM_DELAY = WIDTH+WIDTH+1+1
+
+MAX_SIMS = 10_000
 
 # --- Coverage Goals -----------------------------------------------------------
 
@@ -122,11 +120,11 @@ class Bfm(SuperBfm):
 random.seed(R_SEED)
 
 # create empty test vector files
-i_file = vi.InputTrace()
-o_file = vi.OutputTrace()
+i_file = InputTrace()
+o_file = OutputTrace()
 
 # initialize the values with defaults
-i_file.write(Bfm())
+i_file.append(Bfm())
 
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
@@ -144,17 +142,17 @@ while Coverage.all_passed(MAX_SIMS) == False:
     cg_unique_inputs.cover(txn.bin.as_int())
 
     # write each transaction to the input file
-    i_file.write(txn)
+    i_file.append(txn)
 
     # alter the input while the computation is running
     for _ in range(1, FSM_DELAY):
-        bad = Bfm().rand()
+        bad = Bfm().randomize()
         cp_bin_while_active.cover(bad.bin.as_int() != txn.bin.as_int())
         cp_go_while_active.cover(bad.go.as_int() == 1)
-        i_file.write(bad)
+        i_file.append(bad)
 
     # compute expected values to send to simulation
-    o_file.write(txn.evaluate())
+    o_file.append(txn.evaluate())
     pass
 
 print()
