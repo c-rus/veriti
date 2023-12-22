@@ -10,6 +10,8 @@ class InputTrace:
         '''
         import os
         self._path = os.path.join(config.Config()._working_dir, fname)
+        if os.path.exists(self._path) == False:
+            os.makedirs(os.path.dirname(self._path), exist_ok=True)
         # create a new file
         open(self._path, 'w').close()
         self._verbose = verbose
@@ -54,6 +56,8 @@ class OutputTrace:
         '''
         import os
         self._path = os.path.join(config.Config()._working_dir, fname)
+        if os.path.exists(self._path) == False:
+            os.makedirs(os.path.dirname(self._path), exist_ok=True)
         # create a new file
         open(self._path, 'w').close()
         self._verbose = verbose
