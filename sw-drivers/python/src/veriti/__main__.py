@@ -1,14 +1,12 @@
-# File: main.py
-# Author: Chase Ruskin
-# Created: 2023-12-17
-# Details:
-#   Provides interface between client and veriti as a command-line application.
+# Project: veriti
+# Script: __main__.py
 #
+# Provides an interface between client and veriti as a command-line application.
 
 import argparse
+from . import __version__
 from . import config
 from . import log
-from . import __version__
 from . import lib
 
 
@@ -120,7 +118,7 @@ def main():
 
 def run(args: argparse.Namespace):
     # initialize the state of veriti
-    lib.set(design_if=args.design_if, bench_if=args.bench_if, work_dir=args.work_dir, seed=args.seed, generics=args.generic)
+    config.set(design_if=args.design_if, bench_if=args.bench_if, work_dir=args.work_dir, seed=args.seed, generics=args.generic)
     import runpy
     # run the python model script in its own namespace
     runpy.run_path(args.script, init_globals={})
