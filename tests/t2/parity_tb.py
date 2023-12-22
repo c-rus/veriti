@@ -15,10 +15,10 @@ from typing import List
 from veriti.trace import InputTrace, OutputTrace
 from veriti.model import SuperBfm, Signal
 import random
-import hamming
 import sys
 print(sys.version_info)
 print(sys.path)
+import hamming
 # --- Constants ----------------------------------------------------------------
 
 # define the randomness seed
