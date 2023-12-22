@@ -6,7 +6,7 @@ description = "SW drivers for a digital hardware verification framework"
 requires-python = ">=3.7"
 
 [project.scripts]
-veriti = "veriti.main:main"
+veriti = "veriti.__main__:main"
 
 [project.urls]
 "Homepage" = "https://github.com/c-rus/veriti"

@@ -15,6 +15,7 @@ from typing import List
 from veriti.trace import InputTrace, OutputTrace
 from veriti.model import SuperBfm, Signal
 import random
+import hamming
 
 # --- Constants ----------------------------------------------------------------
 
@@ -26,20 +27,6 @@ SIZE: int = vi.get_generic('SIZE', type=int)
 EVEN_PARITY: bool = vi.get_generic('EVEN_PARITY', type=bool)
 
 MAX_SIMS = 256
-
-# --- Functions ----------------------------------------------------------------
-
-def set_parity_bit(arr: List[int], use_even=True) -> bool:
-    '''
-    Checks if the `arr` has an odd amount of 0's in which case the parity bit
-    must be set to '1' to achieve an even parity.
-
-    If `use_even` is set to `False`, then odd parity will be computed and will
-    seek to achieve an odd amount of '1's (including parity bit).
-    '''
-    # count the number of 1's in the list
-    return (arr.count(1) % 2) ^ (use_even == False)
-
 
 # --- Classes ------------------------------------------------------------------
 
@@ -60,7 +47,7 @@ class Bfm(SuperBfm):
         # cast into a `List[int]` type
         vec = [int(x) for x in self.data.as_logic()]
 
-        if set_parity_bit(vec, use_even=EVEN_PARITY) == True:
+        if hamming.set_parity_bit(vec, use_even=EVEN_PARITY) == True:
             self.check_bit.set(1)
             
         return self

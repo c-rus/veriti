@@ -12,6 +12,16 @@ from . import __version__
 from . import lib
 
 
+VHDL_DRIVER_PROC_NAME = 'drive'
+VHDL_LOADER_PROC_NAME = 'load'
+VHDL_ASSERT_PROC_NAME = 'log_assertion'
+
+
+def tab(n: int) -> str:
+    TAB_SIZE = 2
+    return (' ' * TAB_SIZE) * n
+
+
 class Generic:
 
     def __init__(self, key: str, val: str):
@@ -152,17 +162,17 @@ def get_vhdl_process_inputs(ports):
     for p in ports:
         if p['mode'].lower() != 'in':
             continue
-        body += config.TAB(2) + config.VHDL_DRIVER_PROC_NAME + '(row, bfm.'+p['name']+');\n'
+        body += tab(2) + VHDL_DRIVER_PROC_NAME + '(row, bfm.'+p['name']+');\n'
         pass
 
     result = '''
 procedure send_transaction(file fd: text) is
-''' + config.TAB(1) + '''variable row: line;
+''' + tab(1) + '''variable row: line;
 begin
-''' + config.TAB(1) + '''if endfile(fd) = false then
-''' + config.TAB(2) + '''readline(fd, row);
+''' + tab(1) + '''if endfile(fd) = false then
+''' + tab(2) + '''readline(fd, row);
 ''' + body + \
-config.TAB(1) + '''end if;
+tab(1) + '''end if;
 end procedure;'''
     return result
 
@@ -179,19 +189,19 @@ def get_vhdl_process_outputs(ports, entity) -> str:
     for p in ports:
         if p['mode'].lower() != 'out':
             continue
-        body += config.TAB(2) + config.VHDL_LOADER_PROC_NAME + '(row, expct.'+p['name']+');\n'
-        body += config.TAB(2) + config.VHDL_ASSERT_PROC_NAME + '(events, bfm.'+p['name']+', expct.'+p['name']+', \"'+p['name']+'\");\n'
+        body += tab(2) + VHDL_LOADER_PROC_NAME + '(row, expct.'+p['name']+');\n'
+        body += tab(2) + VHDL_ASSERT_PROC_NAME + '(events, bfm.'+p['name']+', expct.'+p['name']+', \"'+p['name']+'\");\n'
         pass
 
     result = '''
 procedure score_transaction(file fd: text) is 
-''' + config.TAB(1) + '''variable row: line;
-''' + config.TAB(1) + '''variable expct: '''+entity+'''_bfm;
+''' + tab(1) + '''variable row: line;
+''' + tab(1) + '''variable expct: '''+entity+'''_bfm;
 begin
-''' + config.TAB(1) + '''if endfile(fd) = false then
-''' + config.TAB(2) + '''readline(fd, row);
+''' + tab(1) + '''if endfile(fd) = false then
+''' + tab(2) + '''readline(fd, row);
 ''' + body + \
-config.TAB(1) + '''end if;
+tab(1) + '''end if;
 end procedure;'''
 
     return result
@@ -212,7 +222,7 @@ def get_vhdl_record_bfm(ports, entity) -> str:
         id = str(item['name'])
         dt = str(item['type'])
         _spacing = (' ' * (longest_len-len(id))) + ' '
-        body += config.TAB(1) + id + ': ' + dt + ';\n'
+        body += tab(1) + id + ': ' + dt + ';\n'
         pass
     result = '''
 type '''+entity+'''_bfm is record

@@ -5,10 +5,6 @@
 #   Stores constants used across the library.
 #
 
-VHDL_DRIVER_PROC_NAME = 'drive'
-VHDL_LOADER_PROC_NAME = 'load'
-VHDL_ASSERT_PROC_NAME = 'log_assertion'
-
 TRACE_FILE_EXT = '.trace'
 LOG_FILE_EXT = '.log'
 
@@ -17,12 +13,6 @@ LOG_TIMESTAMP_R_TOKEN = ']'
 
 LOG_CAUSE_L_TOKEN = '\"'
 LOG_CAUSE_R_TOKEN = '\"'
-
-TAB_SIZE = 2
-
-
-def TAB(n: int):
-    return (' ' * TAB_SIZE) * n
 
 
 class Config:
@@ -40,7 +30,7 @@ class Config:
 
     def __new__(cls):
         if cls._instance is None:
-            print('Initializing library...')
+            # print('Initializing library...')
             cls._instance = super(Config, cls).__new__(cls)
         return cls._instance
     
