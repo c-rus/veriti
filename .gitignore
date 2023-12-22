@@ -4,3 +4,6 @@ Orbit.lock
 
 *.egg-info
 __pycache__
+
+todo.md
+justfile

@@ -29,7 +29,7 @@ jobs:
       - name: Run tests
         run: |
           orbit plan --top t1 --plugin ghdl
-          orbit b
+          orbit b -- --enable-veriti=0 --run-model=1
 
   sw-drivers:
     runs-on: ubuntu-latest
