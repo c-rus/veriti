@@ -135,7 +135,7 @@ def get_generic(key: str, type=None, default=None):
     return value
 
 
-def seed(default: int=None) -> int:
+def rng_seed(default: int=None) -> int:
     '''
     Set and get a seed integer value and initializes the random number generator.
 

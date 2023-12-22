@@ -17,7 +17,7 @@ from veriti.trace import InputTrace, OutputTrace
 # --- Constants ----------------------------------------------------------------
 
 # initialize the randomness seed
-random.seed(vi.seed(0))
+random.seed(vi.rng_seed(0))
 
 # collect generics
 WIDTH = vi.get_generic(key='LEN', type=int)
@@ -170,7 +170,7 @@ while Coverage.all_passed(MAX_SIMS) == False:
     pass
 
 print()
-print('Seed:', vi.seed())
+print('Seed:', vi.rng_seed())
 print("Valid Transaction Count:", Coverage.count())
 print("Coverage:", Coverage.percent(), "%")
 # display quick summary coverage statistics

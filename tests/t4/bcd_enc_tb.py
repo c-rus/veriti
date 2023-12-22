@@ -17,7 +17,7 @@ from veriti.model import SuperBfm, Signal, Mode
 # --- Constants ----------------------------------------------------------------
 
 # define the randomness seed
-R_SEED = vi.seed(0)
+R_SEED = vi.rng_seed(0)
 
 # collect generics
 DIGITS = vi.get_generic('DIGITS', type=int)
