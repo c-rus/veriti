@@ -29,7 +29,7 @@ jobs:
 
       - name: Run tests
         run: |
-          orbit plan --top t1 --plugin ghdl
+          orbit plan --top t1 --plugin gsim
           orbit b -- --enable-veriti=0 --run-model=1
 
   sw-drivers:
@@ -77,18 +77,18 @@ jobs:
 
       - name: Test parity module
         run: |
-          orbit plan --clean --plugin ghdl --top parity
+          orbit plan --clean --plugin gsim --top parity
           orbit b
-          veriti check --log ./build/ghdl/events.log
+          veriti check --log ./build/gsim/events.log
 
       - name: Test add module
         run: |
-          orbit plan --clean --plugin ghdl --top add
+          orbit plan --clean --plugin gsim --top add
           orbit b
-          veriti check --log ./build/ghdl/events.log
+          veriti check --log ./build/gsim/events.log
 
       - name: Test BCD encoder module
         run: |
-          orbit plan --clean --plugin ghdl --top bcd_enc
+          orbit plan --clean --plugin gsim --top bcd_enc
           orbit b -- -g LEN=8
-          veriti check --log ./build/ghdl/events.log
+          veriti check --log ./build/gsim/events.log
