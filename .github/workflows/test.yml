@@ -19,8 +19,9 @@ jobs:
         
       - name: Configure orbit profile
         run: |
-          git clone https://github.com/c-rus/orbit-profile.git "$(orbit env ORBIT_HOME)/profiles/c-rus"
-          orbit config --append include="profiles/c-rus/config.toml"
+          git clone https://github.com/c-rus/orbit-profile.git "$(orbit env ORBIT_HOME)/profiles/crus"
+          pip install -r "$(orbit env ORBIT_HOME)/profiles/crus/requirements.txt"
+          orbit config --append include="profiles/crus/config.toml"
 
       - name: Initialize orbit package
         run: |
@@ -62,8 +63,9 @@ jobs:
         
       - name: Configure orbit profile
         run: |
-          git clone https://github.com/c-rus/orbit-profile.git "$(orbit env ORBIT_HOME)/profiles/c-rus"
-          orbit config --append include="profiles/c-rus/config.toml"
+          git clone https://github.com/c-rus/orbit-profile.git "$(orbit env ORBIT_HOME)/profiles/crus"
+          pip install -r "$(orbit env ORBIT_HOME)/profiles/crus/requirements.txt"
+          orbit config --append include="profiles/crus/config.toml"
 
       - name: Install veriti software drivers
         run: |
