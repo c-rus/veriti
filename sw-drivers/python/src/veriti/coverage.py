@@ -1,14 +1,23 @@
+# Project: veriti
+# Module: coverage
+#
+# This module handles coverage implementations to track coverage nets: coverpoints
+# and covergroups.
+#
+# TODO: Implement 'max_bins' on covergroup class.
+
 from abc import ABC as _ABC
 from enum import Enum as _Enum
 from abc import abstractmethod as _abstractmethod
 from typing import List as _List
 import random as _random
-# @todo: implement max_bins on covergroup
+
 
 class Status(_Enum):
     PASSED = 0
     SKIPPED = 1
     FAILED = 2
+    pass
 
 
 class Coverage(_ABC):
@@ -265,7 +274,7 @@ class Covergroup(Coverage):
         '''
         Lump bins into groups
         '''
-        # @todo
+        # TODO: Implement
         pass
 
 class Coverpoint(Coverage):

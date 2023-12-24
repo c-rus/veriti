@@ -1,14 +1,18 @@
-from abc import ABC as _ABC
-from abc import abstractmethod as _abstractmethod
+# Project: veriti
+# Module: model.py
+#
+# Defines various class and functions when working with a functional software 
+# model for a hardware design.
+
 import random as _random
-from typing import Tuple as _Tuple
 from enum import Enum as _Enum
 from .lib import to_logic, from_logic, pow2m1
 from . import config
 
+
 class Mode(_Enum):
-    INPUT  = 0
-    OUTPUT = 1
+    IN  = 0
+    OUT = 1
     INOUT  = 2
     LOCAL  = 3
     # allow the interface data to decide what mode this signal is
@@ -18,14 +22,15 @@ class Mode(_Enum):
     def from_str(s: str):
         s = s.lower()
         if s == 'in':
-            return Mode.INPUT
+            return Mode.IN
         elif s == 'out':
-            return Mode.OUTPUT
+            return Mode.OUT
         elif s == 'inout':
             return Mode.INOUT
-        else:
+        elif s == 'local':
             return Mode.LOCAL
- 
+        else:
+            raise Exception('Failed to convert str '+s+' to type Mode')
     pass
 
 
@@ -192,103 +197,66 @@ class Signal:
     pass
 
 
-class SuperBfm(_ABC):        
+def __compile_ports(model):
     '''
-    Returns the name for the entity being tested. 
+    Compiles the list of ports into a mapping where the 'key' is the defined name
+    and the 'value' is a tuple (Signal, Dict).
+    '''
+    # save computations
+    if hasattr(model, '__veriti_cached_ports') == True:
+        return model.__veriti_cached_ports
     
-    This name will appear in the generated VHDL code. By default it is `uut`.
+    model.__veriti_cached_ports = dict()
+    for (key, val) in vars(model).items():
+        # only python variables declared as signals can be a port
+        if isinstance(val, Signal) == False:
+            continue
+        # override variable name with explicit name provided
+        defined_name = key if val._name == None else val._name
+        # check if the name is in the port interface data
+        loc = config.Config().locate_port(defined_name)
+        if loc != -1:
+            # store the interface data and the signal data together
+            model.__veriti_cached_ports[defined_name] = (val, loc)
+        pass
+    return model.__veriti_cached_ports
+    
+
+def get_ports(model, mode: Mode):
     '''
-    entity = None
+    Collects the attributes defined in the `model` into a list storing
+    the tuples of their (name, signal).
+    '''
+    results = []
 
-    @_abstractmethod
-    def __init__(self):
-        '''
-        Defines the available signals along with their widths and default values.
-
-        The order the signals are specified is not necessarily the order they
-        are written/read to/from the test vector files.
-        '''
+    key: str
+    sig: Signal
+    index: int
+    for (key, (sig, index)) in __compile_ports(model).items():
+        use_mode = Mode.from_str(config.Config().get_port(index)['mode']) if sig.mode() == Mode.INFER else sig.mode()
+        if use_mode != mode:
+            continue
+        results += [(index, key, sig)]
         pass
 
-
-    def compile_ports(self):
-        '''
-        Compiles the list of ports into a mapping where the 'key' is the defined name
-        and the 'value' is a tuple (Signal, Dict).
-        '''
-        # save computations
-        if hasattr(self, '_ports') == True:
-            return self._ports
-        
-        self._ports = dict()
-        for (key, val) in vars(self).items():
-            # only python variables declared as signals can be a port
-            if isinstance(val, Signal) == False:
-                continue
-            # override variable name with explicit name provided
-            defined_name = key if val._name == None else val._name
-            # check if the name is in the port interface data
-            loc = config.Config().locate_port(defined_name)
-            if loc != -1:
-                # store the interface data and the signal data together
-                self._ports[defined_name] = (val, loc)
-            pass
-        return self._ports
-        
-
-    def get_ports(self, mode: Mode):
-        '''
-        Collects the attributes defined in the subclass into a list storing
-        the tuples.
-
-        Collects all signals tied to the Bfm if `mode` is set to `None`.
-        '''
-        results = []
-
-        key: str
-        sig: Signal
-        index: int
-        for (key, (sig, index)) in self.compile_ports().items():
-            use_mode = Mode.from_str(config.Config().get_port(index)['mode']) if sig.mode() == Mode.INFER else sig.mode()
-            if use_mode != mode:
-                continue
-            results += [(index, key, sig)]
-            pass
-
-        results.sort()
-        # store tuple with (name, signal)
-        results = [(x[1], x[2]) for x in results]
-        return results
-    
-
-    def _get_entity(self) -> str:
-        return 'uut' if self.entity is None else str(self.entity)
+    results.sort()
+    # store tuple with (name, signal)
+    results = [(x[1], x[2]) for x in results]
+    return results
 
 
-    def randomize(self):
-        '''
-        Generates random input values for each attribute for the BFM. This is
-        a convenience function for individually setting each signal randomly.
-        '''
-        sig: Signal
-        for (_, sig) in self.get_ports(mode=Mode.INPUT):
-            sig.rand()
-            pass
-        return self
-    
-
-    @_abstractmethod
-    def evaluate(self, *args):
-        '''
-        Process the inputs for the current transaction to update the outputs with
-        their correct values according to the design's intended behavior.
-        '''
+def randomize(model):
+    '''
+    Generates random input values for each attribute for the BFM. This is
+    a convenience function for individually setting each signal randomly.
+    '''
+    sig: Signal
+    for (_, sig) in get_ports(model, mode=Mode.IN):
+        sig.rand()
         pass
+    return model
 
-    pass
 
-
-# --- Tests --------------------------------------------------------------------
 import unittest as _ut
 
 class __Test(_ut.TestCase):

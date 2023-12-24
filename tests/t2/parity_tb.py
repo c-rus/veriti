@@ -7,12 +7,12 @@
 # that will be read and processed during a hardware simulation.
 
 import veriti as vi
-from veriti.trace import InputTrace, OutputTrace
-from veriti.model import SuperBfm, Signal
+from veriti.trace import TraceFile
+from veriti.model import Signal, Mode
 import random
 import hamming
 
-class Bfm(SuperBfm):
+class Parity:
 
     def __init__(self, even_parity: bool, width: int):
         self._even_parity = even_parity
@@ -32,27 +32,30 @@ class Bfm(SuperBfm):
     pass
 
 # realize a version of the model
-model = Bfm(
+model = Parity(
     even_parity=vi.get_generic('EVEN_PARITY', type=bool),
     width=vi.get_generic('SIZE', type=int)
 )
 
 # create empty test vector files
-i_file = InputTrace()
-o_file = OutputTrace()
+inputs = TraceFile('inputs', mode='in').open()
+outputs = TraceFile('outputs', mode='out').open()
 
 # set and get the rng seed
 RNG_SEED = vi.rng_seed(0)
 random.seed(RNG_SEED)
 
-MAX_SIMS = 256
+MAX_SIMS = 1_000
 
 # generate test cases until total coverage is met or we reached max count
 for _ in range(0, MAX_SIMS):
     # create a new input to enter through the algorithm
-    txn = model.randomize()
-    i_file.append(txn)
+    txn = vi.randomize(model)
+    inputs.append(txn)
     # run the algorithm for the parity
     txn = model.evaluate()
-    o_file.append(txn)
+    outputs.append(txn)
     pass
+
+inputs.close()
+outputs.close()

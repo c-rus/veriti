@@ -10,9 +10,9 @@
 #
 import random
 import veriti as vi
-from veriti.trace import InputTrace, OutputTrace
+from veriti.trace import TraceFile
 from veriti.coverage import Coverage, Covergroup, Coverpoint
-from veriti.model import SuperBfm, Signal, Mode
+from veriti.model import Signal, Mode
 
 # --- Constants ----------------------------------------------------------------
 
@@ -65,16 +65,15 @@ cg_extreme_values = Covergroup(
 # --- Models -------------------------------------------------------------------
 
 # define the bus-functional-model
-class Bfm(SuperBfm):
-    entity = 'bcd_enc'
+class BcdEncoder:
 
-    def __init__(self):
-        self.go = Signal(mode=Mode.INPUT)
-        self.bin = Signal(mode=Mode.INPUT, width=WIDTH)
+    def __init__(self, width: int, digits: int):
+        self.go = Signal(mode=Mode.IN)
+        self.bin = Signal(mode=Mode.IN, width=width)
 
-        self.bcd = Signal(mode=Mode.OUTPUT, width=(4*DIGITS))
-        self.ovfl = Signal(mode=Mode.OUTPUT)
-        self.done = Signal(mode=Mode.OUTPUT)
+        self.bcd = Signal(mode=Mode.OUT, width=(4*digits))
+        self.ovfl = Signal(mode=Mode.OUT)
+        self.done = Signal(mode=Mode.OUT)
         pass
 
 
@@ -120,16 +119,19 @@ class Bfm(SuperBfm):
 random.seed(R_SEED)
 
 # create empty test vector files
-i_file = InputTrace()
-o_file = OutputTrace()
+inputs = TraceFile('inputs', Mode.IN).open()
+outputs = TraceFile('outputs', Mode.OUT).open()
 
 # initialize the values with defaults
-i_file.append(Bfm())
+inputs.append(BcdEncoder(WIDTH, DIGITS))
 
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    txn = Bfm()
+    txn = BcdEncoder(
+        width=WIDTH,
+        digits=DIGITS
+    )
     txn.go.set(1)
     txn.bin.rand()
 
@@ -142,17 +144,17 @@ while Coverage.all_passed(MAX_SIMS) == False:
     cg_unique_inputs.cover(txn.bin.as_int())
 
     # write each transaction to the input file
-    i_file.append(txn)
+    inputs.append(txn)
 
     # alter the input while the computation is running
     for _ in range(1, FSM_DELAY):
-        bad = Bfm().randomize()
+        bad = vi.randomize(BcdEncoder(WIDTH, DIGITS))
         cp_bin_while_active.cover(bad.bin.as_int() != txn.bin.as_int())
         cp_go_while_active.cover(bad.go.as_int() == 1)
-        i_file.append(bad)
+        inputs.append(bad)
 
     # compute expected values to send to simulation
-    o_file.append(txn.evaluate())
+    outputs.append(txn.evaluate())
     pass
 
 print()
@@ -163,3 +165,6 @@ print("Coverage:", Coverage.percent(), "%")
 print(Coverage.report(False))
 # write the full coverage stats to a text file
 Coverage.save_report("coverage.txt")
+
+inputs.close()
+outputs.close()

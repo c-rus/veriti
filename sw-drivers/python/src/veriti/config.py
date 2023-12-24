@@ -3,9 +3,6 @@
 #
 # Stores constants used across the library.
 
-TRACE_FILE_EXT = '.trace'
-LOG_FILE_EXT = '.log'
-
 LOG_TIMESTAMP_L_TOKEN = '['
 LOG_TIMESTAMP_R_TOKEN = ']'
 
@@ -15,16 +12,19 @@ LOG_CAUSE_R_TOKEN = '\"'
 
 class Config:
     '''
-    
-    Implements the Singleton pattern.
+    Implements the Singleton pattern for library-wide state and settings.
     '''
     _instance = None
+
+    _LOG_FILE_EXT = '.log'
+    _TRACE_FILE_EXT = '.trace'
 
     _initialized = False
     _gens = dict()
     _ports = []
     _seed = None
     _working_dir = '.'
+    _sim_log = 'events' + _LOG_FILE_EXT
 
     def __new__(cls):
         if cls._instance is None:
@@ -69,15 +69,24 @@ class Config:
                 return i
         return -1
     
+
     def get_port(self, i: int) -> dict:
         '''
-        Acces the port element at the `i`th index.
+        Access the port element at the `i`th index.
         '''
         return self._ports[i]
+    
+
+    def get_sim_log(self) -> str:
+        '''
+        Access the name of the simulation log used to write events during a
+        hardware simulation.
+        '''
+        return self._sim_log
     pass
 
 
-def set(design_if: str=None, bench_if: str=None, work_dir: str=None, seed: int=None, generics=[]):
+def set(design_if: str=None, bench_if: str=None, work_dir: str=None, seed: int=None, generics=[], sim_log: str=None):
     # grab singleton object
     state = Config()
 
@@ -92,6 +101,8 @@ def set(design_if: str=None, bench_if: str=None, work_dir: str=None, seed: int=N
         state._seed = int(seed)
     if work_dir != None:
         state._working_dir = str(work_dir)
+    if sim_log != None:
+        state._sim_log = str(sim_log)
 
     # update to generics mapping
     for g in generics:

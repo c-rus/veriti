@@ -318,7 +318,15 @@ def report_score(logfile: str) -> str:
     Formats the score as a `str`.
     '''
     lg = Log.load(logfile)
-    return 'Score: ' + str(lg.get_score()) + ' % ' + '(' + str(lg.get_pass_count()) + '/' + str(lg.get_test_count()) + ')'
+    return str(lg.get_score()) + ' % ' + '(' + str(lg.get_pass_count()) + '/' + str(lg.get_test_count()) + ')'
+
+
+def get_name() -> str:
+    '''
+    Access the name of the simulation log used to write events during a
+    hardware simulation.
+    '''
+    return config.Config().get_sim_log()
 
 
 import unittest as _ut

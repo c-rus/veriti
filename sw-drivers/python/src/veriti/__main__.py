@@ -101,8 +101,8 @@ def main():
         print(data)
     elif sc == 'check':
         result = log.check(args.log, args.cov)
-        print('info:', 'Simulation history available at:', log.get_event_log_path(args.log))
-        print('info:', log.report_score(args.log))
+        # print('info:', 'Simulation history available at:', log.get_event_log_path(args.log))
+        # print('info:', log.report_score(args.log))
         if result == True:
             print('info:', 'Passed verification')
             exit(0)

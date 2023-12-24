@@ -11,8 +11,8 @@
 import random
 import veriti as vi
 from veriti.coverage import Coverage, Covergroup, Coverpoint
-from veriti.model import SuperBfm, Signal
-from veriti.trace import InputTrace, OutputTrace
+from veriti.model import Signal, Mode
+from veriti.trace import TraceFile
 
 # --- Constants ----------------------------------------------------------------
 
@@ -85,8 +85,7 @@ cp_in0_in1_eq_max  = Coverpoint(
 # --- Model --------------------------------------------------------------------
 
 # define the bus functional model
-class Bfm(SuperBfm):
-    entity = 'add'
+class Adder:
 
     def __init__(self, width: int):
         # inputs
@@ -113,15 +112,15 @@ class Bfm(SuperBfm):
 # --- Logic --------------------------------------------------------------------
 
 # create empty test vector files
-i_file = InputTrace()
-o_file = OutputTrace()
+inputs = TraceFile('inputs', Mode.IN).open()
+outputs = TraceFile('outputs', Mode.OUT).open()
 
-model = Bfm(width=WIDTH)
+model = Adder(width=WIDTH)
 
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    txn = model.randomize()
+    txn = vi.randomize(model)
 
     # prioritize reaching coverage for all possible inputs first
     if cg_in0_full.passed() == False:
@@ -163,11 +162,15 @@ while Coverage.all_passed(MAX_SIMS) == False:
     cp_cin_asserted.cover(txn.cin.as_int() == 1)
 
     # write each transaction to the input file
-    i_file.append(txn)
+    inputs.append(txn)
 
     # compute expected values to send to simulation
-    o_file.append(txn.evaluate())
+    txn = model.evaluate()
+    outputs.append(txn)
     pass
+
+inputs.close()
+outputs.close()
 
 print()
 print('Seed:', vi.rng_seed())
@@ -178,3 +181,4 @@ print(Coverage.report(verbose=False))
 
 # write the full coverage stats to a text file
 Coverage.save_report()
+
