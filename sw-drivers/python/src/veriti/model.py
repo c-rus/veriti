@@ -36,7 +36,7 @@ class Mode(_Enum):
 
 class Signal:
 
-    def __init__(self, width: int=None, value=0, mode: Mode=Mode.INFER, big_endian:bool=True, name: str=None):
+    def __init__(self, width: int=None, mode: Mode=Mode.INFER, value=0, big_endian:bool=True, name: str=None):
         self._mode = mode
         self._width = width if width != None else 1
         if self._width <= 0:
@@ -44,9 +44,10 @@ class Signal:
             self._width = 1
         # provide an initialized value
         self._value = 0
-        self.set(value, is_signed=False)
         # specify the order of the bits (big-endian is MSB first)
         self._big_endian = big_endian
+
+        self.set(value, is_signed=False)
         # provide an explicit name to search up in design interface
         self._name = name
         pass
@@ -109,7 +110,7 @@ class Signal:
 
     def set(self, num, is_signed=False):
         '''
-        Sets the data to the specified 'num' and according to its data type.  
+        Sets the data to the specified 'num' and according to its data type. 
         
         - If the type is `int`: This function ensures the data is within the 
         'max()' value by using the modulo operator.
@@ -121,6 +122,10 @@ class Signal:
         if type(num) == int:
             self._value = num % (self.max() + 1)
         elif type(num) == str:
+            # make sure to put into big-endianness first
+            if self._big_endian == False:
+                # reverse endianness to be MSB first
+                num = num[::-1]
             if self.width() < len(num):
                 # use the rightmost bits (if applicable)
                 num = num[len(num)-self.width():]
@@ -137,16 +142,7 @@ class Signal:
         0 to len-1. Signals that are 'big-endian' will the count the vector right 
         to left.
         '''
-        diff: int = 2*index if self._big_endian == False else self.width()-1
-        bit: str = '1' if int(bit) == 1 else '0'
-
-        result = ''
-        for i, elem in enumerate(self.as_logic()):
-            if diff-index == i:
-                result += bit
-            else:
-                result += elem
-        self.set(result, is_signed=False)
+        self.__setitem__(index, bit)
         pass
 
 
@@ -158,8 +154,7 @@ class Signal:
         0 to len-1. Signals that are 'big-endian' will the count the vector right 
         to left.
         '''
-        diff: int = 2*index if self._big_endian == False else self.width()-1
-        return self.as_logic()[diff-index]
+        return self[index]
         
 
     def __eq__(self, other):
@@ -177,16 +172,29 @@ class Signal:
 
 
     def __getitem__(self, key: int) -> str:
-        return self.as_logic()[self.width()-key-1]
+        vec = self.as_logic()
+        # reverse to count from 0 to width-1
+        if self._big_endian == True:
+            vec = vec[::-1]
+        return vec[key]
     
 
     def __setitem__(self, key: int, value: str):
+        new_val: str = '1' if int(value) == 1 else '0'
+        vec = self.as_logic()
+        # reverse to count from 0 to width-1
+        if self._big_endian == True:
+            vec = vec[::-1]
         result = ''
-        for i, bit in enumerate(self.as_logic()):
-            if self.width()-key-1 == i:
-                result += value
+
+        for i, bit in enumerate(vec):
+            if key == i:
+                result += new_val
             else:
                 result += bit
+        # reverse back
+        if self._big_endian == True:
+            result = result[::-1]
         self.set(result)
         pass
 
@@ -261,14 +269,77 @@ import unittest as _ut
 
 class __Test(_ut.TestCase):
 
+
+    def test_as_logic(self):
+        s = Signal(width=4, value="1000", big_endian=True)
+        self.assertEqual(s.as_logic(), "1000")
+
+        s = Signal(width=4, value=2, big_endian=True)
+        self.assertEqual(s.as_logic(), "0010")
+
+        s = Signal(width=4, value="1000", big_endian=False)
+        self.assertEqual(s.as_logic(), "1000")
+
+        s = Signal(width=4, value=2, big_endian=False)
+        self.assertEqual(s.as_logic(), "0100")
+        pass
+
+
+    def test_index_bit(self):
+        s = Signal(width=4, value="1000", big_endian=True)
+        self.assertEqual(s[0], '0')
+        self.assertEqual(s[3], '1')
+
+        s = Signal(width=4, value=2, big_endian=True)
+        self.assertEqual(s[1], '1')
+
+        s = Signal(width=4, value="1000", big_endian=False)
+        self.assertEqual(s[0], '1')
+
+        s = Signal(width=4, value=2, big_endian=False)
+        self.assertEqual(s[1], '1')
+        pass
+
+
+    def test_modify_index_bit(self):
+        s = Signal(width=4, value="0000", big_endian=True)
+        s[3] = '1'
+        self.assertEqual(s[3], '1')
+        self.assertEqual(s.as_logic(), "1000")
+        self.assertEqual(s.as_int(), 8)
+
+        s = Signal(width=4, value=0, big_endian=True)
+        s[1] = '1'
+        self.assertEqual(s.as_logic(), "0010")
+        self.assertEqual(s.as_int(), 2)
+
+        s = Signal(width=4, value="0000", big_endian=False)
+        s[3] = '1'
+        self.assertEqual(s[3], '1')
+        self.assertEqual(s.as_logic(), "0001")
+        self.assertEqual(s.as_int(), 8)
+
+        s = Signal(width=4, value=0, big_endian=False)
+        s[1] = '1'
+        self.assertEqual(s.as_logic(), "0100")
+        self.assertEqual(s.as_int(), 2)
+        pass
+
+
+    def test_set_bit(self):
+
+        pass
+
     def test_bit_access(self):
         s = Signal(width=4, value="1010")
-
         self.assertEqual('1', s[1])
         self.assertEqual('0', s[0])
+        self.assertEqual('0', s[2])
         self.assertEqual('1', s[3])
-        
         pass
+
+
+
 
     def test_bit_modify(self):
         s = Signal(width=4, value="1010")
@@ -285,8 +356,10 @@ class __Test(_ut.TestCase):
     def test_set_bit(self):
         s = Signal(width=4, value="0000")
         s.set_bit(0, '1')
+        self.assertEqual('0', s.as_logic()[0])
         self.assertEqual('1', s.as_logic()[3])
         s.set_bit(3, '1')
+        self.assertEqual('1', s.as_logic()[3])
         self.assertEqual('1', s.as_logic()[0])
 
         s = Signal(width=4, value="0000", big_endian=True)
@@ -295,6 +368,13 @@ class __Test(_ut.TestCase):
         s.set_bit(2, '1')
         self.assertEqual('1', s[2])
         self.assertEqual("0101", str(s))
+
+        s = Signal(width=4, value="0000", big_endian=False)
+        s.set_bit(0, '1')
+        self.assertEqual('1', s[0])
+        s.set_bit(2, '1')
+        self.assertEqual('1', s[2])
+        self.assertEqual("1010", str(s))
         pass
 
     def test_get_bit(self):

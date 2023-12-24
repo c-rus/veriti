@@ -83,6 +83,9 @@ def to_logic(n, width: int=None, trunc: bool=True, big_endian=True) -> str:
 def from_logic(b: str, signed: bool=False) -> int:
     '''
     Converts the binary string `b` to an integer representation.
+
+    This function assumes the input to be in big-endian format (MSB is first in
+    the sequence).
     
     ### Parameters
     - `b`: binary string to convert (example: '011101')
@@ -131,6 +134,10 @@ class __Test(_ut.TestCase):
         self.assertEqual('110', to_logic(6, big_endian=True))
 
         self.assertEqual('01', to_logic(6, width=2, big_endian=False))
+
+        self.assertEqual('10', to_logic(1, width=2, big_endian=False))
+
+        self.assertEqual('011', to_logic(6, width=3, big_endian=False))
         pass
 
 
