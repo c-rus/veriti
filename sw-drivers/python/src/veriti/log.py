@@ -302,10 +302,23 @@ def check(logfile: str, covfile: str) -> bool:
     Checks if there were any errors in the simulation
     '''
     lg = Log.load(logfile)
-    if lg.is_success() == False:
-        print(read(logfile, Level.WARN.value))
-    print('Score:', str(lg.get_score()), '%', '('+str(lg.get_pass_count())+'/'+str(lg.get_test_count())+')')
     return lg.is_success()
+
+
+def get_event_log_path(logfile: str) -> str:
+    '''
+    Returns the absolute path to the log file.
+    '''
+    import os
+    return str(os.path.abspath(logfile))
+
+
+def report_score(logfile: str) -> str:
+    '''
+    Formats the score as a `str`.
+    '''
+    lg = Log.load(logfile)
+    return 'Score: ' + str(lg.get_score()) + ' % ' + '(' + str(lg.get_pass_count()) + '/' + str(lg.get_test_count()) + ')'
 
 
 import unittest as _ut

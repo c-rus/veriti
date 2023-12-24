@@ -1,9 +1,7 @@
+# Project: veriti
 # File: config.py
-# Author: Chase Ruskin
-# Created: 2023-12-17
-# Details:
-#   Stores constants used across the library.
 #
+# Stores constants used across the library.
 
 TRACE_FILE_EXT = '.trace'
 LOG_FILE_EXT = '.log'
@@ -103,7 +101,7 @@ def set(design_if: str=None, bench_if: str=None, work_dir: str=None, seed: int=N
     pass
 
 
-def get_generic(key: str, type=None, default=None):
+def get_generic(key: str, type=None):
     '''
     Accesses the generic based upon the provided `key`.
 
@@ -115,7 +113,12 @@ def get_generic(key: str, type=None, default=None):
     if key in Config()._gens:
         value = Config()._gens[key]
     else:
-        return default
+        all_keys = ''
+        for g in Config()._gens.keys():
+            all_keys += str(g) + ', '
+        if len(all_keys) > 0:
+            all_keys = all_keys[:len(all_keys)-2]
+        raise Exception('Unknown generic "'+key+'" (possible values: ' + all_keys + ')')
     if type == int:
         value = cast.from_vhdl_int(value)
     elif type == bool:
@@ -129,9 +132,7 @@ def get_generic(key: str, type=None, default=None):
     elif type == [str]:
         value = cast.from_vhdl_strs(value)
     else:
-        print('warning: Unsupported casting to type:', type)
-        # do nothing
-        pass
+        raise Exception('Unsupported casting for generic "'+key+'" to type: ' + str(type))
     return value
 
 

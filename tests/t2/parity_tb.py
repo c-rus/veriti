@@ -53,6 +53,6 @@ for _ in range(0, MAX_SIMS):
     txn = model.randomize()
     i_file.append(txn)
     # run the algorithm for the parity
-    txn = txn.evaluate()
+    txn = model.evaluate()
     o_file.append(txn)
     pass

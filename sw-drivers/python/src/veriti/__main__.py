@@ -101,11 +101,13 @@ def main():
         print(data)
     elif sc == 'check':
         result = log.check(args.log, args.cov)
+        print('info:', 'Simulation history available at:', log.get_event_log_path(args.log))
+        print('info:', log.report_score(args.log))
         if result == True:
-            print('Passed verification')
+            print('info:', 'Passed verification')
             exit(0)
         if result == False:
-            print('Failed verification')
+            print('error:', 'Failed verification')
             exit(101)
         pass
     elif sc == 'run':
