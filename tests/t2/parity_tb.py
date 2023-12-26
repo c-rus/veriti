@@ -8,16 +8,22 @@
 
 import veriti as vi
 from veriti.trace import TraceFile
-from veriti.model import Signal, Mode
+from veriti.model import Signal
 import random
 import hamming
+
+# Gaussian distribution with variance 9 (20 bins)
+norm_probs = [0.0005389,  0.00153382, 0.00391032, 0.00892944, 0.0182647,  0.03346428,
+ 0.05492042, 0.08073691, 0.10631586, 0.12540449, 0.13250064, 0.12540449,
+ 0.10631586, 0.08073691, 0.05492042, 0.03346428, 0.0182647,  0.00892944,
+ 0.00391032, 0.00153382]
 
 class Parity:
 
     def __init__(self, even_parity: bool, width: int):
         self._even_parity = even_parity
         # inputs
-        self.data = Signal(width)
+        self.data = Signal(width, dist=norm_probs)
         # outputs
         self.check_bit = Signal()
         pass
@@ -47,15 +53,23 @@ random.seed(RNG_SEED)
 
 MAX_SIMS = 1_000
 
+data_values = []
+
 # generate test cases until total coverage is met or we reached max count
 for _ in range(0, MAX_SIMS):
     # create a new input to enter through the algorithm
     txn = vi.randomize(model)
+
+    data_values += [int(txn.data)]
+
     inputs.append(txn)
-    # run the algorithm for the parity
     txn = model.evaluate()
     outputs.append(txn)
     pass
 
 inputs.close()
 outputs.close()
+
+# import matplotlib.pyplot as plt
+# plt.hist(data_values, bins=len(norm_probs))
+# plt.show()

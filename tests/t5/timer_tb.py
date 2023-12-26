@@ -38,7 +38,7 @@ cp_base = Coverpoint(name="base tick triggered", goal=3)
 
 class Timer:
     def __init__(self):
-        self.sub_ticks = Signal(width=len(SUB_DELAYS), mode=Mode.OUT, big_endian=False)
+        self.sub_ticks = Signal(width=len(SUB_DELAYS), mode=Mode.OUT, endianness='little')
         self.base_tick = Signal(mode=Mode.OUT)
         pass
 

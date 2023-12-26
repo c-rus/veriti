@@ -1,12 +1,11 @@
-# Project  : add
-# Engineer : Chase Ruskin
-# Created  : 2023-06-17
-# Details  :
-#   This script generates the I/O test vector files to be used with the 
-#   add_tb.vhd testbench. Generic values for `LEN` can be passed through the 
-#   command-line. 
+# Project: veriti
+# Script: add_tb.py
 #
-#   Generates a coverage report as well to indicate the robust of the test.
+# This script generates the I/O test vector files to be used with the 
+# add_tb.vhd testbench. Generic values for `LEN` can be passed through the 
+# command-line. 
+#
+# Generates a coverage report as well to indicate the robust of the test.
 
 import random
 from veriti.prelude import *
@@ -90,13 +89,15 @@ cp_in0_in1_eq_max  = Coverpoint(
     mapping=lambda pair: int(pair[0]) == pair[0].max() and int(pair[1]) == pair[1].max()
 )
 
+
+
 # Define the functional model
 class Adder:
 
     def __init__(self, width: int):
         # inputs
-        self.in0 = Signal(width=width)
-        self.in1 = Signal(width=width)
+        self.in0 = Signal(width=width, dist=Distribution(space=[0, pow2m1(width), range(1, pow2m1(width)-1)], weights=[0.1, 0.1, 0.8]))
+        self.in1 = Signal(width=width, dist=Distribution(space=[0, pow2m1(width), range(1, pow2m1(width)-1)], weights=[0.1, 0.1, 0.8]))
         self.cin = Signal()
         # outputs
         self.sum = Signal(width=width)
@@ -105,7 +106,7 @@ class Adder:
 
     def evaluate(self):
         result = self.in0.as_int() + self.in1.as_int() + self.cin.as_int()
-        temp = Signal(width=self.in0.width()+1, value=result, big_endian=True).as_logic()
+        temp = Signal(width=self.in0.width()+1, value=result, endianness='big').as_logic()
         # slice and dice
         self.sum.set(temp[1:])
         self.cout.set(temp[0])
@@ -187,4 +188,3 @@ print(Coverage.report(verbose=False))
 
 # write the full coverage stats to a text file
 Coverage.save_report()
-

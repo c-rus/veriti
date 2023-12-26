@@ -34,22 +34,105 @@ class Mode(_Enum):
     pass
 
 
+class Distribution:
+    import random as _random
+
+    def __init__(self, space, weights=None, partition: bool=True):
+        '''
+        If `weights` is set to None, then it is assumed to to be uniform distribution
+        across the defined elements.
+
+        If `partition` is set to true, it will divide up the total sample space `space`
+        into evenly paritioned groups summing to the total number of provided weights.
+        '''
+        import math as _math
+
+        self._sample_space = space
+        self._weights = weights
+        # determine if to group the items together in divisible bins w/ weights weights[i]
+        self._partition = partition
+        self._events_per_weight = 1
+        # re-group the items
+        self._partitioned_space = self._sample_space
+        # print(self._partition)
+        if self._partition == True and type(self._weights) != type(None):
+            self._partitioned_space = []
+            self._events_per_weight = int(_math.ceil(len(self._sample_space) / len(weights)))
+            # initialize the bins
+            for i, element in enumerate(self._sample_space):
+                # group the items together based on a common index that divides them into groups
+                i_macro = int(i / self._events_per_weight)
+                #print(i_macro)
+                if len(self._partitioned_space) <= i_macro:
+                    self._partitioned_space.append([])
+                    pass
+                self._partitioned_space[i_macro] += [element]
+                pass
+        pass
+
+
+    def samples(self, k=1):
+        '''
+        Produce a sample from the known distribution.
+        '''
+        outcomes = _random.choices(population=self._partitioned_space, weights=self._weights, k=k)
+        results = []
+        for event in outcomes:
+            # unfold inner lists and ranges
+            while type(event) == range or type(event) == list:
+                event = _random.choice(event)
+            results += [event]
+        return results
+    pass
+
+
 class Signal:
 
-    def __init__(self, width: int=None, mode: Mode=Mode.INFER, value=0, big_endian:bool=True, name: str=None):
+    def __init__(self, width: int=None, mode: Mode=Mode.INFER, value=0, endianness: str='big', name: str=None, dist: Distribution=None):
+        '''
+        Create a new Signal instance.
+
+        ### Parameters
+        - The `width` parameter determines the number of bits in the signal. If set to None, then it will be 1 bit wide.
+
+        - The `mode` parameter determines what type of direction the signal should be. When set to INFER, the mode is resolved
+        based what mode the corresponding signal name is in the hardware language based on reading json data with this information.
+        
+        - The `value` parameter determines the initial value for the signal.
+
+        - The `endianness` parameter can be set to 'big' or 'little' to determine the endianness of the data. Big endianness
+        corresponds to having the most-significant bit be first in the sequence, while little endianness corresponds to
+        having the least-significant bit be first in the sequence.
+
+        - The `name` parameter can be used to explicitly set the signal's name when searching for the hardware language's equivalent signal.
+        If this is set to None, then it uses this instance's name in the Python code as the name.
+
+        - The `dist` parameter can either be a list of probabilities or a Distribution instance. When `dist` is
+        a list, it will use this instance's minimum and maximum values as the range for the sample space and partition
+        accordingly based on the number of weights.
+        '''
         self._mode = mode
         self._width = width if width != None else 1
         if self._width <= 0:
-            print('warning: Signal cannot have width less than or equal to 0')
-            self._width = 1
+            raise Exception('Signal cannot have width less than or equal to 0')
+        
+        # specify the order of the bits (big-endian is MSB first)
+        if endianness != 'big' and endianness != 'little':
+            raise Exception("Signal must either have 'big' or 'little' endianness")
+        self._big_endian = str(endianness).lower() == 'big'
+
         # provide an initialized value
         self._value = 0
-        # specify the order of the bits (big-endian is MSB first)
-        self._big_endian = big_endian
-
         self.set(value, is_signed=False)
+
         # provide an explicit name to search up in design interface
         self._name = name
+
+        # provide explicit distribution of values for sampling
+        self._dist = dist
+        if type(self._dist) == list:
+            self._dist = Distribution(space=[*range(self.min(), self.max())], weights=dist, partition=True)
+            pass
         pass
 
 
@@ -85,9 +168,19 @@ class Signal:
 
     def rand(self):
         '''
-        Sets the data to a random value between 'min()' and 'max()', inclusively.
+        Sets the data to a random value based on its distribution.
+
+        If no distribution was defined for the Signal, it wil use a uniform
+        distribution across the minimum and maximum values, inclusively.
         '''
-        self._value = _random.randint(self.min(), self.max())
+        # provide uniform distribution when no distribution is defined for the signal
+        if self._dist == None:
+            self._value = _random.randint(self.min(), self.max())
+        else:
+            self._value = self._dist.samples(k=1)[0]
+        # ensure the selected data is allowed and in bounds
+        if self._value < self.min() or self._value > self.max():
+            raise Exception("Value out of bounds")
         return self
     
 
@@ -120,8 +213,13 @@ class Signal:
         - Otherwise: the function will print a warning statement
         '''
         if type(num) == int:
+            # ensure the selected data is allowed and in bounds
+            if int(num) < self.min() or int(num) > self.max():
+                raise Exception("Value out of bounds")
             self._value = num % (self.max() + 1)
         elif type(num) == str:
+            if len(str(num)) > self.width():
+                raise Exception("Value out of bounds")
             # make sure to put into big-endianness first
             if self._big_endian == False:
                 # reverse endianness to be MSB first
@@ -131,7 +229,7 @@ class Signal:
                 num = num[len(num)-self.width():]
             self._value = from_logic(num, is_signed)
         else:
-            print('WARNING: Invalid type attempting to set signal value')
+            raise Exception("Cannot set signal with type "+str(type(num)))
 
     
     def set_bit(self, index: int, bit):
@@ -206,6 +304,10 @@ class Signal:
     def __int__(self):
         return self.as_int()
     
+
+    def get_range(self) -> range:
+        return range(self.min(), self.max()+1)
+    
     pass
 
 
@@ -273,6 +375,42 @@ import unittest as _ut
 
 class __Test(_ut.TestCase):
 
+    def test_new_dist(self):
+        dist = Distribution([0, pow2m1(4), range(1, pow2m1(4)-1)], weights=[0.1, 0.1, 0.8])
+
+        freqs = dict()
+        for i in range(1_000):
+            sample = dist.samples()[0]
+            if sample == 0:
+                if 'min' not in freqs.keys():
+                    freqs['min'] = 0
+                freqs['min'] += 1
+            elif sample == pow2m1(4):
+                if 'max' not in freqs.keys():
+                    freqs['max'] = 0
+                freqs['max'] += 1
+            else:
+                if 'middle' not in freqs.keys():
+                    freqs['middle'] = 0
+                freqs['middle'] += 1
+
+        print(freqs)
+        self.assertEqual(1, 0)
+        pass
+
+    def test_uniform_dist(self):
+        dist = Distribution([*range(2**4)], weights=[1/16] * 16)
+
+        freqs = dict()
+        for i in range(10_000):
+            sample = dist.samples()[0]
+            if sample not in freqs.keys():
+                freqs[sample] = 0
+            freqs[sample] += 1
+
+        print(freqs)
+        self.assertEqual(1, 0)
+        pass
 
     def test_as_logic(self):
         s = Signal(width=4, value="1000", big_endian=True)
@@ -288,7 +426,6 @@ class __Test(_ut.TestCase):
         self.assertEqual(s.as_logic(), "0100")
         pass
 
-
     def test_index_bit(self):
         s = Signal(width=4, value="1000", big_endian=True)
         self.assertEqual(s[0], '0')
@@ -303,7 +440,6 @@ class __Test(_ut.TestCase):
         s = Signal(width=4, value=2, big_endian=False)
         self.assertEqual(s[1], '1')
         pass
-
 
     def test_modify_index_bit(self):
         s = Signal(width=4, value="0000", big_endian=True)
@@ -329,11 +465,6 @@ class __Test(_ut.TestCase):
         self.assertEqual(s.as_int(), 2)
         pass
 
-
-    def test_set_bit(self):
-
-        pass
-
     def test_bit_access(self):
         s = Signal(width=4, value="1010")
         self.assertEqual('1', s[1])
@@ -341,9 +472,6 @@ class __Test(_ut.TestCase):
         self.assertEqual('0', s[2])
         self.assertEqual('1', s[3])
         pass
-
-
-
 
     def test_bit_modify(self):
         s = Signal(width=4, value="1010")
@@ -355,7 +483,6 @@ class __Test(_ut.TestCase):
         s[3] = '0'
         self.assertEqual('0', s[3])
         pass
-    
 
     def test_set_bit(self):
         s = Signal(width=4, value="0000")
