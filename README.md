@@ -26,7 +26,7 @@ This separation of functionality is important in terms of modularity. If a model
 
 The software drivers implement the low-level functions required to run any form of test. It translates your test cases into the raw data layer represented by a specific file format.
 
-The software drivers layer is responsible for generating test inputs, tracking coverage, and generating test outputs. 
+The software drivers layer is responsible for generating test inputs, tracking coverage, and generating test outputs. When defining signals in your software model, you can also specify their probability distribution to randomly sample based on distributions other than just uniformly.
 
 The software drivers layer can also generate HDL code, which is useful to copy/paste when writing the code to connect the hardware design to the raw data layer.
 
@@ -56,7 +56,7 @@ The workflow is broken down into 3 main steps:
 
 3. Run a software program (`veriti`) to interpret/analyze outcomes stored in log file. If all tests passed, then the program exits with code `0`. If any tests failed, then the program exits with code `101`.
 
-When the software model is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, which are either `Coverpoints` or `Covergroups`.
+When the software model is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, which can either a `Coverpoint`, `Coverrange`, or `Covergroup`.
 
 Once the test files are generated at the raw data layer, the simulation can begin in the hardware description language. At the hardware drivers layer, a package of functions exist for clock generation, system reseting, signal driving, signal montioring, and logging.
 
