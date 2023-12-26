@@ -24,6 +24,13 @@ def pow(base: int, exp: int):
     return base**exp
 
 
+def pow2(width: int):
+    '''
+    Computes the following formula: `2^(width)`
+    '''
+    return (2**width)
+
+
 def to_logic(n, width: int=None, trunc: bool=True, big_endian=True) -> str:
     '''
     Converts the integer `n` to a binary string.

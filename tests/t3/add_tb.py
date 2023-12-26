@@ -9,26 +9,17 @@
 #   Generates a coverage report as well to indicate the robust of the test.
 #
 import random
-import veriti as vi
-from veriti.coverage import Coverage, Covergroup, Coverpoint
-from veriti.model import Signal, Mode
-from veriti.trace import TraceFile
-
-# --- Constants ----------------------------------------------------------------
+from veriti.prelude import *
 
 # initialize the randomness seed
-random.seed(vi.rng_seed(0))
+random.seed(rng_seed(0))
 
 # collect generics
-WIDTH = vi.get_generic(key='LEN', type=int)
+WIDTH = get_generic(key='LEN', type=int)
 
-MAX_SIMS = 10_000
+MAX_SIMS = 5_000
 
-# --- Coverage Goals -----------------------------------------------------------
-
-# specify coverage areas
-
-BIN_DIV = 16 if WIDTH > 16 else WIDTH
+# Specify coverage areas
 
 # make sure cin is asserted at least 100 times
 cp_cin_asserted = Coverpoint(
@@ -43,32 +34,48 @@ cp_cout_gen = Coverpoint(
 # make sure that in0 has 0 and max value tested at least 10 times
 cg_in0_extremes = Covergroup(
     "in0 extremes",
-    bins=[0, vi.pow2m1(WIDTH)],
+    bins=[0, pow2m1(WIDTH)],
     goal=10,
 )
 cg_in1_extremes = Covergroup(
     "in1 extremes",
-    bins=[0, vi.pow2m1(WIDTH)],
+    bins=[0, pow2m1(WIDTH)],
     goal=10,
 )
-# divide up input space into 16 bins and make sure all bins are tested at least once
-# @todo: use 'max_bins' arg to limit bin counting (%)
-cg_in0_full = Covergroup(
+
+cg_in0_full = Coverrange(
     "in0 full",
-    bins=[i for i in range(0, BIN_DIV)],
+    span=range(0, pow2(WIDTH)),
     goal=1,
+    max_steps=64
 )
-cg_in1_full = Covergroup(
+
+cg_in1_full = Coverrange(
     "in1 full",
-    bins=[i for i in range(0, BIN_DIV)],
+    span=range(0, pow2(WIDTH)),
     goal=1,
+    max_steps=64
 )
+
 # make sure all combinations of input bins are tested at least once
-cg_in0_cross_in1 = Covergroup(
+# MAX_CROSS = 512 if pow2(WIDTH) > 512 else pow2(WIDTH)
+# cg_in0_cross_in1 = Covergroup(
+#     "in0 cross in1",
+#     bins=[(y, x) for x in range(0, MAX_CROSS) for y in range(0, MAX_CROSS)],
+#     goal=1,
+#     max_bins=32,
+#     map=lambda item: (int(item[0] % MAX_CROSS), int(item[1] % MAX_CROSS)),
+# )
+
+# define the cross coverage as a range
+cg_in0_cross_in1 = Coverrange(
     "in0 cross in1",
-    bins=[(x, y) for x in range(0, BIN_DIV) for y in range(0, BIN_DIV)],
+    span=range(0, pow(2, WIDTH) * pow(2, WIDTH)),
     goal=1,
+    max_steps=64,
+    map=lambda item: int(item[0] * pow(2, WIDTH)) + int(item[1]),
 )
+
 # Check to make sure both inputs are 0 or the max value at the same time.
 # It would be more readable to use cover properties here, but if we
 # want this included in the coverage reporting for the group, we need it
@@ -82,9 +89,7 @@ cp_in0_in1_eq_max  = Coverpoint(
     goal=1
 )
 
-# --- Model --------------------------------------------------------------------
-
-# define the bus functional model
+# Define the functional model
 class Adder:
 
     def __init__(self, width: int):
@@ -109,7 +114,7 @@ class Adder:
         return self
     pass
 
-# --- Logic --------------------------------------------------------------------
+# Prepare the traces for simulation
 
 # create empty test vector files
 inputs = TraceFile('inputs', Mode.IN).open()
@@ -120,17 +125,17 @@ model = Adder(width=WIDTH)
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    txn = vi.randomize(model)
+    txn = randomize(model)
 
     # prioritize reaching coverage for all possible inputs first
     if cg_in0_full.passed() == False:
-        txn.in0.set(int(cg_in0_full.next(rand=True) % WIDTH))
+        txn.in0.set(int(cg_in0_full.next(rand=True)))
     elif cg_in1_full.passed() == False:
-        txn.in1.set(int(cg_in1_full.next(rand=True) % WIDTH))
+        txn.in1.set(int(cg_in1_full.next(rand=True)))
     # generate random numbers that exceed sum vector
     elif cp_cout_gen.passed() == False:
         txn.in0.set(random.randint(1, txn.in0.max()))
-        txn.in1.set(vi.pow2m1(WIDTH)+random.randint(1, WIDTH) - txn.in0.as_int())
+        txn.in1.set(pow2m1(WIDTH) + random.randint(1, WIDTH) - txn.in0.as_int())
     # provide an extreme value for in0
     elif cg_in0_extremes.passed() == False:
         txn.in0.set(random.choice([txn.in0.min(), txn.in0.max()]))
@@ -151,7 +156,7 @@ while Coverage.all_passed(MAX_SIMS) == False:
         pass
 
     # update coverages
-    cg_in0_cross_in1.cover((int(txn.in0.as_int() % 16), int(txn.in1.as_int() % 16)))
+    cg_in0_cross_in1.cover((txn.in0.as_int(), txn.in1.as_int()))
     cg_in0_full.cover(txn.in0.as_int())
     cg_in1_full.cover(txn.in1.as_int())
     cg_in0_extremes.cover(txn.in0.as_int())
@@ -173,7 +178,7 @@ inputs.close()
 outputs.close()
 
 print()
-print('Seed:', vi.rng_seed())
+print('Seed:', rng_seed())
 print("Valid Transaction Count:", Coverage.count())
 print("Coverage:", Coverage.percent(), "%")
 # display quick summary coverage statistics
