@@ -1,16 +1,13 @@
 # Project: veriti
 # Module: coverage
 #
-# This module handles coverage implementations to track coverage nets: coverpoints
-# and covergroups.
-#
-# TODO: Implement 'max_bins' on covergroup class.
+# This module handles coverage implementations to track coverage nets: 
+# - coverpoints
+# - coverranges
+# - covergroups
 
 from abc import ABC as _ABC
 from enum import Enum as _Enum
-from abc import abstractmethod as _abstractmethod
-from typing import List as _List
-import random as _random
 
 def _find_longest_str_len(x) -> int:
     '''
@@ -31,6 +28,7 @@ class Status(_Enum):
 
 
 class Coverage(_ABC):
+    from abc import abstractmethod as _abstractmethod
 
     _group = []
     _counter = 0
@@ -187,10 +185,11 @@ class Coverage(_ABC):
 
 
 class Covergroup(Coverage):
+    from typing import List as _List
 
     group = []
 
-    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, map=None):
+    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None):
         '''
         Initialize by expliciting defining the bins.
         '''
@@ -204,7 +203,7 @@ class Covergroup(Coverage):
         # defining a bin range is more flexible for defining a large space
 
         # store the function to map items into the coverage space
-        self._map = map
+        self._map = mapping
 
         # determine the number of maximum bins
         self._max_bins = max_bins
@@ -297,6 +296,8 @@ class Covergroup(Coverage):
         Returns `None` if no item is left (all goals are reached and coverage is
         passing).
         '''
+        import random as _random
+
         # can only map 1-way (as of now)
         if self._map != None:
             raise Exception("Cannot map back to original values")
@@ -396,11 +397,21 @@ class Covergroup(Coverage):
 
 class Coverrange(Coverage):
     '''
-    Coverrange tracks across the span of a range.
+    Coverranges are designed to track a span of integer numbers, which can divided up among steps.
+    This structure is similar to a Covergroup, however, the bins defined in a Coverrange are implicitly defined
+    along the set of integers.
     '''
 
-    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, map=None):
+    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None):
+        '''
+        Initialize a Coverrange. 
+        
+        The `mapping` argument is a callable function that expects to return an `int`, 
+        which effectively takes some outside input(s) and maps it to a number within 
+        the specified range.
+        '''
         import math
+
         domain = span
         self._goal = goal
         # domain = range
@@ -428,13 +439,27 @@ class Coverrange(Coverage):
         self._total_count = 0
 
         # store a potential custom mapping function
-        self._map = map
+        self._map = mapping
 
         # store the actual values when mapped items cover toward the goal
         self._mapped_items = dict()
 
         super().__init__(name, bypass)
         pass
+
+
+    def get_range(self) -> range:
+        '''
+        Returns the range struct for the Coverrange.
+        '''
+        return range(self._start, self._stop, self._step_size)
+    
+
+    def get_step_count(self) -> int:
+        '''
+        Returns the number of steps necessary to span the entire range.
+        '''
+        return self._num_of_steps
     
 
     def passed(self) -> bool:
@@ -471,16 +496,16 @@ class Coverrange(Coverage):
         is_progress = self._is_possible_value(item) == True and self._table_counts[index] < self._goal
         # update the coverage for this value
         if self._is_possible_value(item) == True:
-            self._table[index] += [item]
+            self._table[index] += [mapped_item]
             self._table_counts[index] += 1
             self._total_count += 1
             # track original items that count toward their space of the domain
             if index not in self._mapped_items.keys():
                 self._mapped_items[index] = dict()
             if item not in self._mapped_items[index].keys():
-                self._mapped_items[index][item] = 0 
+                self._mapped_items[index][mapped_item] = 0 
             # increment the count of this item being detected
-            self._mapped_items[index][item] += 1
+            self._mapped_items[index][mapped_item] += 1
             pass
         return is_progress
     
@@ -495,6 +520,8 @@ class Coverrange(Coverage):
         Returns `None` if no item is left (all goals are reached and coverage is
         passing).
         '''
+        import random as _random
+
         # can only map 1-way (as of now)
         if self._map != None:
             raise Exception("Cannot map back to original values")
@@ -565,12 +592,21 @@ class Coverrange(Coverage):
 
 class Coverpoint(Coverage):
     '''
-    Coverpoints track when particular events occur.
+    Coverpoints are designed to track when a single particular event occurs.
     '''
 
-    def __init__(self, name: str, goal: int, bypass=False):
+    def __init__(self, name: str, goal: int, bypass=False, mapping=None):
+        '''
+        Initialize a Coverpoint. 
+        
+        The `mapping` argument is a callable function that
+        expects to return a `bool`, which effectively takes some outside input(s) and
+        maps it to the user-defined coverage point.
+        '''
         self._count = 0
         self._goal = goal
+        # define a custom function that should return a boolean to define the targeted point
+        self._mapping = mapping
         super().__init__(name, bypass)
         pass
 
@@ -580,6 +616,10 @@ class Coverpoint(Coverage):
         Returns `True` if the `cond` was satisfied and updates the internal count
         as the coverpoint tries to met or exceed its goal.
         '''
+        # use the custom mapping
+        if type(cond) != bool and self._mapping != None:
+            cond = bool(self._mapping(cond))
+            pass
         if cond == True:
             self._count += 1
         return cond

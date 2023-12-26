@@ -202,6 +202,10 @@ class Signal:
     def __str__(self):
         return self.as_logic()
     
+
+    def __int__(self):
+        return self.as_int()
+    
     pass
 
 
