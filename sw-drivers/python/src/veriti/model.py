@@ -394,8 +394,9 @@ class __Test(_ut.TestCase):
                     freqs['middle'] = 0
                 freqs['middle'] += 1
 
-        print(freqs)
-        self.assertEqual(1, 0)
+        # Uncomment to view frequencies for manual verification
+        # print(freqs)
+        # self.assertEqual(1, 0)
         pass
 
     def test_uniform_dist(self):
@@ -408,58 +409,59 @@ class __Test(_ut.TestCase):
                 freqs[sample] = 0
             freqs[sample] += 1
 
-        print(freqs)
-        self.assertEqual(1, 0)
+        # Uncomment to view frequencies for manual verification
+        # print(freqs)
+        # self.assertEqual(1, 0)
         pass
 
     def test_as_logic(self):
-        s = Signal(width=4, value="1000", big_endian=True)
+        s = Signal(width=4, value="1000", endianness='big')
         self.assertEqual(s.as_logic(), "1000")
 
-        s = Signal(width=4, value=2, big_endian=True)
+        s = Signal(width=4, value=2, endianness='big')
         self.assertEqual(s.as_logic(), "0010")
 
-        s = Signal(width=4, value="1000", big_endian=False)
+        s = Signal(width=4, value="1000", endianness='little')
         self.assertEqual(s.as_logic(), "1000")
 
-        s = Signal(width=4, value=2, big_endian=False)
+        s = Signal(width=4, value=2, endianness='little')
         self.assertEqual(s.as_logic(), "0100")
         pass
 
     def test_index_bit(self):
-        s = Signal(width=4, value="1000", big_endian=True)
+        s = Signal(width=4, value="1000", endianness='big')
         self.assertEqual(s[0], '0')
         self.assertEqual(s[3], '1')
 
-        s = Signal(width=4, value=2, big_endian=True)
+        s = Signal(width=4, value=2, endianness='big')
         self.assertEqual(s[1], '1')
 
-        s = Signal(width=4, value="1000", big_endian=False)
+        s = Signal(width=4, value="1000", endianness='little')
         self.assertEqual(s[0], '1')
 
-        s = Signal(width=4, value=2, big_endian=False)
+        s = Signal(width=4, value=2, endianness='little')
         self.assertEqual(s[1], '1')
         pass
 
     def test_modify_index_bit(self):
-        s = Signal(width=4, value="0000", big_endian=True)
+        s = Signal(width=4, value="0000", endianness='big')
         s[3] = '1'
         self.assertEqual(s[3], '1')
         self.assertEqual(s.as_logic(), "1000")
         self.assertEqual(s.as_int(), 8)
 
-        s = Signal(width=4, value=0, big_endian=True)
+        s = Signal(width=4, value=0, endianness='big')
         s[1] = '1'
         self.assertEqual(s.as_logic(), "0010")
         self.assertEqual(s.as_int(), 2)
 
-        s = Signal(width=4, value="0000", big_endian=False)
+        s = Signal(width=4, value="0000", endianness='little')
         s[3] = '1'
         self.assertEqual(s[3], '1')
         self.assertEqual(s.as_logic(), "0001")
         self.assertEqual(s.as_int(), 8)
 
-        s = Signal(width=4, value=0, big_endian=False)
+        s = Signal(width=4, value=0, endianness='little')
         s[1] = '1'
         self.assertEqual(s.as_logic(), "0100")
         self.assertEqual(s.as_int(), 2)
@@ -493,14 +495,14 @@ class __Test(_ut.TestCase):
         self.assertEqual('1', s.as_logic()[3])
         self.assertEqual('1', s.as_logic()[0])
 
-        s = Signal(width=4, value="0000", big_endian=True)
+        s = Signal(width=4, value="0000", endianness='big')
         s.set_bit(0, '1')
         self.assertEqual('1', s[0])
         s.set_bit(2, '1')
         self.assertEqual('1', s[2])
         self.assertEqual("0101", str(s))
 
-        s = Signal(width=4, value="0000", big_endian=False)
+        s = Signal(width=4, value="0000", endianness='little')
         s.set_bit(0, '1')
         self.assertEqual('1', s[0])
         s.set_bit(2, '1')
