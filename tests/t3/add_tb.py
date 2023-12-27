@@ -37,7 +37,7 @@ cp_cout_gen = CoverPoint(
 cg_in0_extremes = CoverGroup(
     "in0 extremes",
     bins=[0, pow2m1(WIDTH)],
-    goal=10,
+    goal=10
 )
 
 # Cover the extreme edge cases for in1 (min and max) at least 10 times.
@@ -45,6 +45,7 @@ cg_in1_extremes = CoverGroup(
     "in1 extremes",
     bins=[0, pow2m1(WIDTH)],
     goal=10,
+    mapping=lambda x: int(x)
 )
 
 # Cover the entire range for in0 into at most 16 bins and make sure
@@ -69,7 +70,7 @@ cg_in1_full = CoverRange(
 # to define this cross coverage as a CoverRange.
 cg_in0_cross_in1 = CoverCross(
     "in0 cross in1",
-    nets=[cg_in0_full, cg_in1_full]
+    nets=[cg_in0_full, cg_in0_full]
 )
 # cg_in0_cross_in1 = CoverRange(
 #     "in0 cross in1",
@@ -98,8 +99,8 @@ class Adder:
 
     def __init__(self, width: int):
         # inputs
-        self.in0 = Signal(width=width, dist=Distribution(space=[0, pow2m1(width), range(1, pow2m1(width)-1)], weights=[0.1, 0.1, 0.8]))
-        self.in1 = Signal(width=width, dist=Distribution(space=[0, pow2m1(width), range(1, pow2m1(width)-1)], weights=[0.1, 0.1, 0.8]))
+        self.in0 = Signal(width=width, dist=Distribution(space=[0, pow2m1(width), range(1, pow2m1(width))], weights=[0.1, 0.1, 0.8]))
+        self.in1 = Signal(width=width, dist=Distribution(space=[0, pow2m1(width), range(1, pow2m1(width))], weights=[0.1, 0.1, 0.8]))
         self.cin = Signal()
         # outputs
         self.sum = Signal(width=width)
@@ -165,8 +166,8 @@ while Coverage.all_passed(MAX_SIMS) == False:
     cg_in0_full.cover(txn.in0)
     cg_in1_full.cover(txn.in1)
     cg_in0_extremes.cover(int(txn.in0))
-    cg_in1_extremes.cover(int(txn.in1))
-    cg_in0_cross_in1.cover(input_pair)
+    cg_in1_extremes.cover(txn.in1)
+    cg_in0_cross_in1.cover((txn.in0, txn.in1))
     cp_in0_in1_eq_0.cover(input_pair)
     cp_in0_in1_eq_max.cover(input_pair)
     cp_cin_asserted.cover(txn.cin)

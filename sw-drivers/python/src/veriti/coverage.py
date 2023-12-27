@@ -222,6 +222,7 @@ class CoverGroup(Coverage):
 
         # initialize the bins
         for i, item in enumerate(set(bins)):
+            # items are already in their 'true' from from given input
             self._bins_lookup[item] = i
             # group the items together based on a common index that divides them into groups
             i_macro = int(i / self._items_per_bin)
@@ -240,23 +241,41 @@ class CoverGroup(Coverage):
     pass
 
 
-    def _is_possible_bin(self, item) -> bool:
+    def _is_possible_value(self, item) -> bool:
         '''
         Checks if the `item` is in the current possible list of all stored bins.
+
+        Uses the raw unmapped value as the `item` and maps it.
         '''
-        return self._bins_lookup.get(item) != None
+        return self._bins_lookup.get(item if self._map == None else self._map(item)) != None
+    
+
+    def _map_value(self, item):
+        '''
+        Converts the raw value into the index in the given range of possible entries.
+        '''
+        mapped_item = item if self._map == None else self._map(item)
+        return int(self._bins_lookup[mapped_item])
     
 
     def _get_macro_bin_index(self, item) -> int:
         '''
         Returns the macro index for the `item` according to the bin division.
 
-        Returns -1 if the item does not exist.
+        Returns -1 if the item does not exist. Takes the mapped input
         '''
-        if self._is_possible_bin(item) == False:
+        if self._is_possible_value(item) == False:
             return -1
         return int(self._bins_lookup[item] / self._items_per_bin)
+    
 
+    def get_range(self) -> range:
+        return range(0, len(self._bins_lookup.keys()), self._items_per_bin)
+    
+
+    def get_step_count(self) -> int:
+        return len(self._macro_bins)
+    
 
     def cover(self, item):
         '''
@@ -270,9 +289,9 @@ class CoverGroup(Coverage):
         i_macro = self._get_macro_bin_index(mapped_item)
         # print(mapped_item, i_macro, item)
         # make the item exists as a possible entry and its macro goal is not met
-        is_progress = self._is_possible_bin(mapped_item) == True and self._macro_bins_count[i_macro] < self._goal
+        is_progress = self._is_possible_value(item) == True and self._macro_bins_count[i_macro] < self._goal
         # check if its in the covered bin
-        if self._is_possible_bin(mapped_item) == True:
+        if self._is_possible_value(item) == True:
             # update the map with the value
             self._macro_bins_count[i_macro] += 1
             # update the total count
@@ -426,9 +445,8 @@ class CoverRange(Coverage):
         self._step_size = domain.step
         self._num_of_steps = num_steps_needed
         if self._max_steps != None and num_steps_needed > self._max_steps:
-            num_steps_adjusted = int(math.ceil(abs(domain.start - domain.stop) / self._max_steps))
             # update instance attributes
-            self._step_size = num_steps_adjusted
+            self._step_size = int(math.ceil(abs(domain.start - domain.stop) / self._max_steps))
             self._num_of_steps = self._max_steps
             pass
 
@@ -704,8 +722,9 @@ class CoverCross(Coverage):
         index = 0
         # dimensions go: x, y, z... so reverse the tuple/list
         for i, p in enumerate(pair[::-1]):
+            # exit if an element was not a possible value
             if self._nets[i]._is_possible_value(p) == False:
-                raise Exception("Value out of bounds")
+                return None
             mapped_element = self._nets[i]._map_value(p)
             # collect all above step counts
             acc_step_counts = 1
@@ -716,7 +735,10 @@ class CoverCross(Coverage):
 
 
     def cover(self, pair):
-        return self._inner.cover(self._flatten(pair))
+        index = self._flatten(pair)
+        if index == None:
+            return False
+        return self._inner.cover(index)
 
 
     def passed(self):
