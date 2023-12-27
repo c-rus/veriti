@@ -77,7 +77,7 @@ jobs:
       - name: Initialize orbit package and environment
         run: |
           orbit install --path hw-drivers
-          orbit --name test
+          orbit init --name test
           echo "/hw-drivers" > .orbitignore
           echo "veriti = \"0.1.0\"" >> Orbit.toml
 
