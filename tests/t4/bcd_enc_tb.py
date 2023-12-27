@@ -157,14 +157,5 @@ while Coverage.all_passed(MAX_SIMS) == False:
     outputs.append(txn.evaluate())
     pass
 
-print()
-print('Seed:', R_SEED)
-print("Valid Transaction Count:", Coverage.count())
-print("Coverage:", Coverage.percent(), "%")
-# write/display coverage statistics
-print(Coverage.report(False))
-# write the full coverage stats to a text file
-Coverage.save_report("coverage.txt")
-
 inputs.close()
 outputs.close()

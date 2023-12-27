@@ -182,13 +182,3 @@ while Coverage.all_passed(MAX_SIMS) == False:
 
 inputs.close()
 outputs.close()
-
-print()
-print('Seed:', rng_seed())
-print("Valid Transaction Count:", Coverage.count())
-print("Coverage:", Coverage.percent(), "%")
-# display quick summary coverage statistics
-print(Coverage.report(verbose=False))
-
-# write the full coverage stats to a text file
-Coverage.save_report()

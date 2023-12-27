@@ -85,13 +85,3 @@ while Coverage.all_passed(MAX_SIMS) == False:
 
 inputs.close()
 outputs.close()
-
-print()
-print('Seed:', R_SEED)
-print("Test Count:", Coverage.count())
-print("Coverage:", Coverage.percent(), "%")
-# display quick summary coverage statistics
-print(Coverage.report(False))
-
-# write the full coverage stats to a text file
-Coverage.save_report("coverage.txt")

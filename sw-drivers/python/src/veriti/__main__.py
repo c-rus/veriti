@@ -7,8 +7,7 @@ import argparse
 from . import __version__
 from . import config
 from . import log
-from . import lib
-
+from . import coverage
 
 VHDL_DRIVER_PROC_NAME = 'drive'
 VHDL_LOADER_PROC_NAME = 'load'
@@ -79,6 +78,7 @@ def main():
 
     parser_check.add_argument('--log', type=str, help='path to log file')
     parser_check.add_argument('--cov', type=str, help='path to coverage file')
+    parser_check.add_argument('--work-dir', action='store', type=str, metavar='PATH', help='set the working directory')
 
     # subcommand: 'run'
     parser_run = sub_parsers.add_parser('run', help='execute the software model')
@@ -100,15 +100,8 @@ def main():
         data = log.read(args.log, args.level)
         print(data)
     elif sc == 'check':
-        result = log.check(args.log, args.cov)
-        # print('info:', 'Simulation history available at:', log.get_event_log_path(args.log))
-        # print('info:', log.report_score(args.log))
-        if result == True:
-            print('info:', 'Passed verification')
-            exit(0)
-        if result == False:
-            print('error:', 'Failed verification')
-            exit(101)
+        rc = check(args)
+        exit(rc)
         pass
     elif sc == 'run':
         run(args)
@@ -116,6 +109,19 @@ def main():
         parser.print_help()
         pass
     pass
+
+
+def check(args: argparse.Namespace):
+    config.set(work_dir=args.work_dir, sim_log=args.log, cov_report=args.cov)
+    result = log.check() # and coverage.check()
+    # print('info:', 'Simulation history available at:', log.get_event_log_path(args.log))
+    # print('info:', log.report_score(args.log))
+    if result == True:
+        print('info:', 'Passed verification')
+        return 0
+    if result == False:
+        print('error:', 'Failed verification')
+        return 101
 
 
 def run(args: argparse.Namespace):

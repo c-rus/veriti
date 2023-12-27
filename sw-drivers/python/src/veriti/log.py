@@ -297,28 +297,31 @@ def read(logfile: str, level: int) -> str:
     return result
 
 
-def check(logfile: str, covfile: str) -> bool:
+def check() -> bool:
     '''
     Checks if there were any errors in the simulation
     '''
-    lg = Log.load(logfile)
+    from . import config
+    lg = Log.load(get_event_log_path())
     return lg.is_success()
 
 
-def get_event_log_path(logfile: str) -> str:
+def get_event_log_path() -> str:
     '''
     Returns the absolute path to the log file.
     '''
     import os
-    return str(os.path.abspath(logfile))
+    from . import config
+    path = os.path.join(config.Config()._working_dir, config.Config().get_sim_log())
+    return str(os.path.abspath(path))
 
 
-def report_score(logfile: str) -> str:
+def report_score() -> str:
     '''
     Formats the score as a `str`.
     '''
-    lg = Log.load(logfile)
-    return str(lg.get_score()) + ' % ' + '(' + str(lg.get_pass_count()) + '/' + str(lg.get_test_count()) + ')'
+    lg = Log.load(get_event_log_path())
+    return (str(lg.get_score()) + ' % ' if lg.get_score() != None else 'N/A ') + '(' + str(lg.get_pass_count()) + '/' + str(lg.get_test_count()) + ')'
 
 
 def get_name() -> str:

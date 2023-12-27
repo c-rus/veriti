@@ -2,9 +2,9 @@
 # Module: coverage
 #
 # This module handles coverage implementations to track coverage nets: 
-# - coverpoints
-# - coverranges
-# - covergroups
+# - CoverPoints
+# - CoverRanges
+# - CoverGroups
 # - CoverCrosses
 
 from abc import ABC as _ABC
@@ -28,7 +28,141 @@ class Status(_Enum):
     pass
 
 
-class Coverage(_ABC):
+class Coverage:
+
+    _total_coverages = 0
+    _passed_coverages = 0
+
+    @staticmethod
+    def all_passed(timeout: int=-1) -> bool:
+        '''
+        Checks if each coverage specification has met its goal.
+
+        If a coverage specification is bypassed, it counts as meeting its
+        goal. If the timeout is set to -1, it will be disabled and only return
+        `True` once all cases are covered.
+        '''
+        # force the simulation to pass if enough checks are evaluated
+        if timeout > 0 and CoverageNet._counter >= timeout:
+            return True        
+        # check every cover-node
+        cov: CoverageNet
+        for cov in CoverageNet._group:
+            if cov.skipped() == False and cov.passed() == False:
+                # increment the counter
+                CoverageNet._counter += 1
+                return False
+        return True
+
+
+    @staticmethod
+    def report(verbose: bool=True) -> str:
+        '''
+        Compiles a report of the coverage statistics and details. Setting `verbose`
+        to `False` will only provide minimal details to serve as a quick summary.
+        '''
+        contents = ''
+        cov: CoverageNet
+        for cov in CoverageNet._group:
+            contents += cov.log(verbose) + '\n'
+        return contents
+
+
+    def get_name(self) -> str:
+        from . import config
+        return config.Config().get_cov_report()
+    
+
+    @staticmethod
+    def count() -> int:
+        '''
+        Returns the number of times the Coverage class has called the 'all_passed'
+        function. If 'all_passed' is called once every transaction, then it gives
+        a sense of how many test cases were required in order to achieve full
+        coverage.
+        '''
+        return CoverageNet._counter
+    
+
+    @staticmethod
+    def tally_score():
+        '''
+        Iterates through all CoverageNets to compute the ratio of pass/fail.
+        '''
+        Coverage._total_coverages = 0
+        Coverage._passed_coverages = 0
+        cov: CoverageNet
+        for cov in CoverageNet._group:
+            if cov.status() == Status.SKIPPED:
+                continue
+            Coverage._total_coverages += 1
+            if cov.status() == Status.PASSED:
+                Coverage._passed_coverages += 1
+            pass
+
+
+    @staticmethod
+    def percent() -> float:
+        '''
+        Return the percent of all coverages that met their goal. Each covergroup's bin
+        is tallied individually instead of tallying the covergroup as a whole.
+
+        Coverages that have a status of `SKIPPED` are not included in the tally.
+
+        Returns `None` if there are no coverages to tally. The percent value is
+        from 0.00 to 100.00 percent, with rounding to 2 decimal places.
+        '''
+        Coverage.tally_score()
+        passed = Coverage._passed_coverages
+        total = Coverage._total_coverages
+        return round((passed/total) * 100.0, 2) if total > 0 else None
+    pass
+
+
+def get_coverage_report_path() -> str:
+    '''
+    Saves the report if not already saved, and then returns the absolute path to the file.
+    '''
+    import os
+    from . import config
+
+    path = os.path.join(config.Config()._working_dir, config.Config().get_cov_report())
+    header = ''
+    header += "Seed: " + str(config.Config()._seed) + '\n'
+    header += "Iterations: " + str(Coverage.count()) + '\n'
+    header += "Coverage: "   + str(Coverage.percent()) + ' %\n'
+    with open(path, 'w') as f:
+            # header
+            f.write(header)
+            f.write('\n')  
+            # summary
+            f.write(Coverage.report(False))
+            f.write('\n')  
+            # details
+            f.write(Coverage.report(True))
+            pass
+    return os.path.abspath(path)
+
+
+def report_score() -> str:
+    '''
+    Formats the score as a `str`.
+    '''
+    Coverage.tally_score()
+    return (str(Coverage.percent()) + ' % ' if Coverage.percent() != None else 'N/A ') + '(' + str(Coverage._passed_coverages) + '/' + str(Coverage._total_coverages) + ')'
+
+
+def check() -> bool:
+    '''
+    Determines if 100% coverage was met.
+    '''
+    Coverage.tally_score()
+    passed = Coverage._passed_coverages
+    total = Coverage._total_coverages
+    return passed == total
+
+
+class CoverageNet(_ABC):
     from abc import abstractmethod as _abstractmethod
 
     _group = []
@@ -37,14 +171,40 @@ class Coverage(_ABC):
     def __init__(self, name: str, bypass: bool=False):
         self._name = name
         self._bypass = bypass
-        Coverage._group += [self]
+        CoverageNet._group += [self]
         pass
 
 
     @_abstractmethod
-    def to_str(self, verbose: bool) -> str:
+    def get_range(self) -> range:
         '''
-        Convert the coverage into a string for readibility to the end-user.
+        Returns a range object of the sample space and the size of each partitioning.
+        '''
+        pass
+    
+
+    @_abstractmethod
+    def get_partition_count(self) -> int:
+        '''
+        Returns the number of unique partitions required to cover the entire sample space.
+        '''
+        pass
+
+
+    @_abstractmethod
+    def is_in_sample_space(self, item) -> bool:
+        '''
+        Checks if the `item` is in the defined sample space.
+        '''
+        pass
+    
+
+    @_abstractmethod
+    def _map_onto_range(self, item) -> int:
+        '''
+        Converts the `item` into a valid number within the defined range of possible values.
+        
+        If there is no possible mapping, return None.
         '''
         pass
 
@@ -74,6 +234,10 @@ class Coverage(_ABC):
             label = 'CoverRange'
         elif issubclass(type(self), CoverCross):
             label = 'CoverCross'
+        elif issubclass(type(self), CoverPoint):
+            label = 'CoverPoint'
+        else:
+            raise Exception("Unsupported CoverageNet "+str(type(self)))
         if verbose == False:
             return label + ": " + self._name + ': ' + self.to_str(verbose) + ' ...'+str(self.status().name)
         else:
@@ -100,94 +264,17 @@ class Coverage(_ABC):
             return Status.FAILED
         
 
-    @staticmethod
-    def all_passed(timeout: int=-1) -> bool:
+    @_abstractmethod
+    def to_str(self, verbose: bool) -> str:
         '''
-        Checks if each coverage specification has met its goal.
-
-        If a coverage specification is bypassed, it counts as meeting its
-        goal. If the timeout is set to -1, it will be disabled and only return
-        `True` once all cases are covered.
+        Converts the coverage into a string for readibility to the end-user.
         '''
-        # force the simulation to pass if enough checks are evaluated
-        if timeout > 0 and Coverage._counter >= timeout:
-            return True        
-        # check every cover-node
-        cov: Coverage
-        for cov in Coverage._group:
-            if cov.skipped() == False and cov.passed() == False:
-                # increment the counter
-                Coverage._counter += 1
-                return False
-        return True
-
-
-    @staticmethod
-    def report(verbose: bool=True) -> str:
-        '''
-        Compiles a report of the coverage statistics and details. Setting `verbose`
-        to `False` will only provide minimal details to serve as a quick summary.
-        '''
-        contents = ''
-        if verbose == True:
-                contents += "Test Count: " + str(Coverage.count()) + '\n'
-                contents += "Coverage: "   + str(Coverage.percent()) + ' %\n'
-        cov: Coverage
-        for cov in Coverage._group:
-            contents += cov.log(verbose) + '\n'
-        return contents
-    
-
-    @staticmethod
-    def save_report(file=None):
-        '''
-        Writes the coverage report with verbosity to the file `file`.
-        '''
-        import os
-        from . import config
-        if file == None:
-            file = os.path.join(config.Config()._working_dir, 'coverage.txt')
-        with open(file, 'w') as cf:
-            cf.write(Coverage.report(True))
-    
-
-    @staticmethod
-    def count() -> int:
-        '''
-        Returns the number of times the Coverage class has called the 'all_passed'
-        function. If 'all_passed' is called once every transaction, then it gives
-        a sense of how many test cases were required in order to achieve full
-        coverage.
-        '''
-        return Coverage._counter
-    
-
-    @staticmethod
-    def percent() -> float:
-        '''
-        Return the percent of all coverages that met their goal. Each covergroup's bin
-        is tallied individually instead of tallying the covergroup as a whole.
-
-        Coverages that have a status of `SKIPPED` are not included in the tally.
-
-        Returns `None` if there are no coverages to tally. The percent value is
-        from 0.00 to 100.00 percent, with rounding to 2 decimal places.
-        '''
-        total_covers = 0
-        covers_passed = 0
-        cov: Coverage
-        for cov in Coverage._group:
-            if cov.status() == Status.SKIPPED:
-                continue
-            total_covers += 1
-            if cov.status() == Status.PASSED:
-                covers_passed += 1
-            pass
-        return round((covers_passed/total_covers) * 100.0, 2) if total_covers > 0 else None
+        pass
+        
     pass
 
 
-class CoverGroup(Coverage):
+class CoverGroup(CoverageNet):
     from typing import List as _List
 
     group = []
@@ -238,43 +325,37 @@ class CoverGroup(Coverage):
         # initialize the total count of all covers
         self._total_count = 0
         super().__init__(name, bypass)
-    pass
+        pass
 
 
-    def _is_possible_value(self, item) -> bool:
-        '''
-        Checks if the `item` is in the current possible list of all stored bins.
+    def _transform(self, item):
+        return item if self._map == None else self._map(item)
 
-        Uses the raw unmapped value as the `item` and maps it.
-        '''
-        return self._bins_lookup.get(item if self._map == None else self._map(item)) != None
+
+    def is_in_sample_space(self, item) -> bool:
+        return self._bins_lookup.get(self._transform(item)) != None
     
 
-    def _map_value(self, item):
-        '''
-        Converts the raw value into the index in the given range of possible entries.
-        '''
-        mapped_item = item if self._map == None else self._map(item)
-        return int(self._bins_lookup[mapped_item])
-    
-
-    def _get_macro_bin_index(self, item) -> int:
-        '''
-        Returns the macro index for the `item` according to the bin division.
-
-        Returns -1 if the item does not exist. Takes the mapped input
-        '''
-        if self._is_possible_value(item) == False:
-            return -1
-        return int(self._bins_lookup[item] / self._items_per_bin)
+    def _map_onto_range(self, item) -> int:
+        if self.is_in_sample_space(item) == False:
+            return None
+        return int(self._bins_lookup[self._transform(item)])
     
 
     def get_range(self) -> range:
         return range(0, len(self._bins_lookup.keys()), self._items_per_bin)
     
 
-    def get_step_count(self) -> int:
+    def get_partition_count(self) -> int:
+        # the real number of partitions of the sample space
         return len(self._macro_bins)
+    
+
+    def _get_macro_bin_index(self, item) -> int:
+        '''
+        Returns the macro index for the `item` according to the bin division.
+        '''
+        return int(self._bins_lookup[item] / self._items_per_bin)
     
 
     def cover(self, item):
@@ -283,27 +364,26 @@ class CoverGroup(Coverage):
 
         This means that the item covered is under the goal.
         '''
+        if self.is_in_sample_space(item) == False:
+            return False
         # use special mapping function if defined
-        mapped_item = item if self._map == None else self._map(item)
+        mapped_item = self._transform(item)
         # got the item, but check its relative items under the same goal
         i_macro = self._get_macro_bin_index(mapped_item)
-        # print(mapped_item, i_macro, item)
         # make the item exists as a possible entry and its macro goal is not met
-        is_progress = self._is_possible_value(item) == True and self._macro_bins_count[i_macro] < self._goal
-        # check if its in the covered bin
-        if self._is_possible_value(item) == True:
-            # update the map with the value
-            self._macro_bins_count[i_macro] += 1
-            # update the total count
-            self._total_count += 1
-            # record the actual value that initiated this coverage
-            if self._map != None:
-                if i_macro not in self._mapped_items.keys():
-                    self._mapped_items[i_macro] = dict()
-                if item not in self._mapped_items[i_macro].keys():
-                   self._mapped_items[i_macro][item] = 0 
-                # increment the count of this item being detected
-                self._mapped_items[i_macro][item] += 1
+        is_progress = self._macro_bins_count[i_macro] < self._goal
+        # update the map with the value
+        self._macro_bins_count[i_macro] += 1
+        # update the total count
+        self._total_count += 1
+        # record the actual value that initiated this coverage
+        if self._map != None:
+            if i_macro not in self._mapped_items.keys():
+                self._mapped_items[i_macro] = dict()
+            if mapped_item not in self._mapped_items[i_macro].keys():
+                self._mapped_items[i_macro][mapped_item] = 0 
+            # increment the count of this item being detected
+            self._mapped_items[i_macro][mapped_item] += 1
             pass
         return is_progress
     
@@ -390,15 +470,15 @@ class CoverGroup(Coverage):
                 count = self._macro_bins_count[i]
                 result += str(phrase) + ': ' + (' ' * (longest_len - len(str(phrase)))) + str(count) + '/' + str(self._goal)
                 # enumerate on all mapped values that were detected for this bin
-                if self._map != None and i in self._mapped_items.keys():
+                if self._map != None and i in self._mapped_items.keys() and self.get_range().step > 1:
                     # determine the string formatting by identifying longest string
                     sub_longest_len = _find_longest_str_len(self._mapped_items[i].keys())
                     seq = [(key, val) for key, val in self._mapped_items[i].items()]
                     seq.sort()
                     LIMITER = 20
-                    for i, (key, val) in enumerate(seq):
+                    for j, (key, val) in enumerate(seq):
                         result += '\n        '
-                        if i > LIMITER:
+                        if j > LIMITER:
                             result += '...'
                             break
                         result += str(key) + ': ' + (' ' * (sub_longest_len - len(str(key)))) + str(val)
@@ -417,7 +497,7 @@ class CoverGroup(Coverage):
     pass
 
 
-class CoverRange(Coverage):
+class CoverRange(CoverageNet):
     '''
     CoverRanges are designed to track a span of integer numbers, which can divided up among steps.
     This structure is similar to a CoverGroup, however, the bins defined in a CoverRange are implicitly defined
@@ -468,18 +548,14 @@ class CoverRange(Coverage):
         super().__init__(name, bypass)
         pass
 
+    def __exit__(self, type, value, traceback):
+        print('exit')
 
     def get_range(self) -> range:
-        '''
-        Returns the range struct for the CoverRange.
-        '''
         return range(self._start, self._stop, self._step_size)
     
 
-    def get_step_count(self) -> int:
-        '''
-        Returns the number of steps necessary to span the entire range.
-        '''
+    def get_partition_count(self) -> int:
         return self._num_of_steps
     
 
@@ -495,16 +571,19 @@ class CoverRange(Coverage):
         return True
     
 
-    def _is_possible_value(self, item) -> bool:
-        '''
-        Checks if the mapping was legal and within the bounds.
-        '''
-        mapped_item = self._map_value(item)
+    def _transform(self, item):
+        return int(item) if self._map == None else int(self._map(item))
+
+
+    def is_in_sample_space(self, item) -> bool:
+        mapped_item = self._transform(item)
         return mapped_item >= self._start and mapped_item < self._stop
     
 
-    def _map_value(self, item) -> int:
-        return int(item) if self._map == None else int(self._map(item))
+    def _map_onto_range(self, item) -> int:
+        if self.is_in_sample_space(item) == False:
+            return None
+        return self._transform(item)
 
 
     def cover(self, item) -> bool:
@@ -513,25 +592,26 @@ class CoverRange(Coverage):
 
         This means that the item covered is under the goal.
         '''
+        if self.is_in_sample_space(item) == False:
+            return False
         # convert item to int
-        mapped_item = self._map_value(item)
+        mapped_item = self._transform(item)
         # transform into coverage domain
         index = int(mapped_item / self._step_size)
         # check if it improves progessing by adding to a mapping that has not met the goal yet
-        is_progress = self._is_possible_value(item) == True and self._table_counts[index] < self._goal
+        is_progress = self._table_counts[index] < self._goal
         # update the coverage for this value
-        if self._is_possible_value(item) == True:
-            self._table[index] += [mapped_item]
-            self._table_counts[index] += 1
-            self._total_count += 1
-            # track original items that count toward their space of the domain
-            if index not in self._mapped_items.keys():
-                self._mapped_items[index] = dict()
-            if item not in self._mapped_items[index].keys():
-                self._mapped_items[index][mapped_item] = 0 
-            # increment the count of this item being detected
-            self._mapped_items[index][mapped_item] += 1
-            pass
+        self._table[index] += [mapped_item]
+        self._table_counts[index] += 1
+        self._total_count += 1
+        # track original items that count toward their space of the domain
+        if index not in self._mapped_items.keys():
+            self._mapped_items[index] = dict()
+        if item not in self._mapped_items[index].keys():
+            self._mapped_items[index][mapped_item] = 0 
+        # increment the count of this item being detected
+        self._mapped_items[index][mapped_item] += 1
+            
         return is_progress
     
 
@@ -615,7 +695,7 @@ class CoverRange(Coverage):
         return result
 
 
-class CoverPoint(Coverage):
+class CoverPoint(CoverageNet):
     '''
     CoverPoints are designed to track when a single particular event occurs.
     '''
@@ -636,16 +716,27 @@ class CoverPoint(Coverage):
         pass
 
 
-    def _is_possible_value(self, item) -> bool:
-        '''
-        Checks if the mapping was legal and within the bounds.
-        '''
-        mapped_item = int(self._map_value(item))
+    def _transform(self, item):
+        return item if self._mapping == None else self._mapping(item)
+
+
+    def is_in_sample_space(self, item) -> bool:
+        mapped_item = int(self._transform(item))
         return mapped_item >= 0 and mapped_item < 2
     
 
-    def _map_value(self, item) -> int:
-        return int(item) if self._mapping == None else int(self._mapping(item))
+    def _map_onto_range(self, item) -> int:
+        if self.is_in_sample_space(item) == False:
+            return None
+        return int(self._transform(item))
+    
+
+    def get_range(self) -> range:
+        return range(0, 2, 1)
+    
+
+    def get_partition_count(self) -> int:
+        return 2
 
 
     def cover(self, item):
@@ -653,7 +744,9 @@ class CoverPoint(Coverage):
         Returns `True` if the `cond` was satisfied and updates the internal count
         as the coverpoint tries to met or exceed its goal.
         '''
-        cond = self._map_value(item)
+        if self.is_in_sample_space(item) == False:
+            return False
+        cond = bool(self._map_onto_range(item))
         if cond == True:
             self._count += 1
         return cond
@@ -666,18 +759,10 @@ class CoverPoint(Coverage):
     def to_str(self, verbose: bool):
         return str(self._count) + '/' + str(self._goal)
     
-
-    def get_range(self) -> range:
-        return range(0, 2)
-    
-
-    def get_step_count(self) -> int:
-        return 2
-    
     pass
 
 
-class CoverCross(Coverage):
+class CoverCross(CoverageNet):
     '''
     CoverCrosses are designed to track cross products between two or more coverage nets.
 
@@ -686,13 +771,13 @@ class CoverCross(Coverage):
     '''
     from typing import List as _List
 
-    def __init__(self, name: str, nets: _List[CoverRange], goal: int=1, bypass=False):
+    def __init__(self, name: str, nets: _List[CoverageNet], goal: int=1, bypass=False):
         self._nets = nets[::-1]
         self._crosses = len(self._nets)
         
         combinations = 1
         for n in nets:
-            combinations *= n.get_step_count()
+            combinations *= n.get_partition_count()
             pass
 
         self._inner = CoverRange(
@@ -710,34 +795,60 @@ class CoverCross(Coverage):
         pass
 
 
-    def _flatten(self, pair):
+    def get_range(self) -> range:
+        return self._inner.get_range()
+    
+
+    def get_partition_count(self) -> int:
+        return self._inner.get_partition_count()
+    
+
+    def is_in_sample_space(self, item) -> bool:
+        for i, x in enumerate(item[::-1]):
+            if self._nets[i].is_in_sample_space(x) == False:
+                return False
+        return True
+
+    
+    def get_cross_count(self) -> int:
+        '''
+        Returns the number of elements are involved in the cartesian cross product.
+        '''
+        return self._crosses
+    
+
+    def _flatten(self, item):
         '''
         Flattens a N-dimensional item into a 1-dimensional index.
 
         Reference: 
         - https://stackoverflow.com/questions/7367770/how-to-flatten-or-index-3d-array-in-1d-array
         '''
-        if len(pair) != self._crosses:
+        if len(item) != self.get_cross_count():
             raise Exception("Expects "+str(self._crosses)+" values in pair")
         index = 0
         # dimensions go: x, y, z... so reverse the tuple/list
-        for i, p in enumerate(pair[::-1]):
+        for i, x in enumerate(item[::-1]):
             # exit if an element was not a possible value
-            if self._nets[i]._is_possible_value(p) == False:
+            if self._nets[i].is_in_sample_space(x) == False:
                 return None
-            mapped_element = self._nets[i]._map_value(p)
-            # collect all above step counts
+            y = self._nets[i]._map_onto_range(x)
+            # collect all above partition sizes
             acc_step_counts = 1
-            for j in range(i+1, self._crosses):
-                acc_step_counts *= self._nets[j].get_step_count()
-            index += acc_step_counts * int(mapped_element / self._nets[i].get_range().step)
+            for j in range(i+1, self.get_cross_count()):
+                acc_step_counts *= self._nets[j].get_partition_count()
+            index += acc_step_counts * int(y / self._nets[i].get_range().step)
         return index
 
 
-    def cover(self, pair):
-        index = self._flatten(pair)
-        if index == None:
-            return False
+    def _map_onto_range(self, item):
+        return self._flatten(item)
+
+
+    def cover(self, item):
+        if self.is_in_sample_space(item) == False:
+            return None
+        index = self._flatten(item)
         return self._inner.cover(index)
 
 

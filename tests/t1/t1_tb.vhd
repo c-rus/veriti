@@ -128,7 +128,7 @@ begin
         log_event(events, TRACE, "SOME EVENT", "manual capture");
         
         -- force an ERROR assertion into log
-        log_assertion(events, valid, '0', "valid");
+        log_assertion(events, valid, '1', "valid");
 
         -- halt the simulation
         complete(halt);
