@@ -32,6 +32,8 @@ class Coverage:
 
     _total_coverages = 0
     _passed_coverages = 0
+    _goals_met = 0
+    _total_points = 0
 
     @staticmethod
     def all_passed(timeout: int=-1) -> bool:
@@ -91,12 +93,19 @@ class Coverage:
         '''
         Coverage._total_coverages = 0
         Coverage._passed_coverages = 0
-        cov: CoverageNet
-        for cov in CoverageNet._group:
-            if cov.status() == Status.SKIPPED:
+        Coverage._goals_met = 0
+        Coverage._total_points = 0
+        net: CoverageNet
+        for net in CoverageNet._group:
+            if net.status() == Status.SKIPPED:
                 continue
             Coverage._total_coverages += 1
-            if cov.status() == Status.PASSED:
+            Coverage._goals_met += net.get_points_met()
+            if type(net) == CoverPoint:
+                Coverage._total_points += 1
+            else:
+                Coverage._total_points += net.get_partition_count()
+            if net.status() == Status.PASSED:
                 Coverage._passed_coverages += 1
             pass
 
@@ -113,8 +122,8 @@ class Coverage:
         from 0.00 to 100.00 percent, with rounding to 2 decimal places.
         '''
         Coverage.tally_score()
-        passed = Coverage._passed_coverages
-        total = Coverage._total_coverages
+        passed = Coverage._goals_met
+        total = Coverage._total_points
         return round((passed/total) * 100.0, 2) if total > 0 else None
     pass
 
@@ -127,20 +136,23 @@ def get_coverage_report_path() -> str:
     from . import config
 
     path = os.path.join(config.Config()._working_dir, config.Config().get_cov_report())
+    Coverage.tally_score()
     header = ''
     header += "Seed: " + str(config.Config()._seed) + '\n'
     header += "Iterations: " + str(Coverage.count()) + '\n'
+    header += "Points covered: " + str(Coverage._goals_met) + '\n'
+    header += "Total points: " + str(Coverage._total_points) + '\n'
     header += "Coverage: "   + str(Coverage.percent()) + ' %\n'
     with open(path, 'w') as f:
-            # header
-            f.write(header)
-            f.write('\n')  
-            # summary
-            f.write(Coverage.report(False))
-            f.write('\n')  
-            # details
-            f.write(Coverage.report(True))
-            pass
+        # header
+        f.write(header)
+        f.write('\n')  
+        # summary
+        f.write(Coverage.report(False))
+        f.write('\n')  
+        # details
+        f.write(Coverage.report(True))
+        pass
     return os.path.abspath(path)
 
 
@@ -149,17 +161,22 @@ def report_score() -> str:
     Formats the score as a `str`.
     '''
     Coverage.tally_score()
-    return (str(Coverage.percent()) + ' % ' if Coverage.percent() != None else 'N/A ') + '(' + str(Coverage._passed_coverages) + '/' + str(Coverage._total_coverages) + ')'
+    return (str(Coverage.percent()) + ' % ' if Coverage.percent() != None else 'N/A ') + '(' + str(Coverage._goals_met) + '/' + str(Coverage._total_points) + ')'
 
 
-def check() -> bool:
+def check(threshold: float=1.0) -> bool:
     '''
-    Determines if 100% coverage was met.
+    Determines if coverage was met based on meeting or exceeding the threshold value.
+
+    ### Parameters
+    - `threshold` expects a floating point value [0, 1.0]
     '''
     Coverage.tally_score()
-    passed = Coverage._passed_coverages
-    total = Coverage._total_coverages
-    return passed == total
+    passed = Coverage._goals_met
+    total = Coverage._total_points
+    if total <= 0:
+        return True
+    return float(passed/total) >= threshold
 
 
 class CoverageNet(_ABC):
@@ -215,6 +232,14 @@ class CoverageNet(_ABC):
 
 
     @_abstractmethod
+    def get_points_met(self) -> int:
+        '''
+        Returns the number of points that have met their goal.
+        '''
+        pass
+
+
+    @_abstractmethod
     def passed(self) -> bool:
         '''
         Returns `True` if the coverage met its goal.
@@ -239,9 +264,9 @@ class CoverageNet(_ABC):
         else:
             raise Exception("Unsupported CoverageNet "+str(type(self)))
         if verbose == False:
-            return label + ": " + self._name + ': ' + self.to_str(verbose) + ' ...'+str(self.status().name)
+            return label + ": " + self._name + ': ' + self.to_string(verbose) + ' ...'+str(self.status().name)
         else:
-            return label + ": " + self._name + ':' + ' ...'+str(self.status().name) + '\n    ' + self.to_str(verbose)
+            return label + ": " + self._name + ':' + ' ...'+str(self.status().name) + '\n    ' + self.to_string(verbose)
 
 
     def skipped(self) -> bool:
@@ -265,7 +290,7 @@ class CoverageNet(_ABC):
         
 
     @_abstractmethod
-    def to_str(self, verbose: bool) -> str:
+    def to_string(self, verbose: bool) -> str:
         '''
         Converts the coverage into a string for readibility to the end-user.
         '''
@@ -310,14 +335,14 @@ class CoverGroup(CoverageNet):
         # initialize the bins
         for i, item in enumerate(set(bins)):
             # items are already in their 'true' from from given input
-            self._bins_lookup[item] = i
+            self._bins_lookup[int(item)] = i
             # group the items together based on a common index that divides them into groups
             i_macro = int(i / self._items_per_bin)
             if len(self._macro_bins) <= i_macro:
                 self._macro_bins.append([])
                 self._macro_bins_count.append(0)
                 pass
-            self._macro_bins[i_macro] += [item]
+            self._macro_bins[i_macro] += [int(item)]
             pass
 
         # set the goal required for each bin
@@ -329,7 +354,7 @@ class CoverGroup(CoverageNet):
 
 
     def _transform(self, item):
-        return item if self._map == None else self._map(item)
+        return int(item if self._map == None else self._map(item))
 
 
     def is_in_sample_space(self, item) -> bool:
@@ -388,6 +413,14 @@ class CoverGroup(CoverageNet):
         return is_progress
     
 
+    def get_points_met(self) -> int:
+        points_met = 0
+        for count in self._macro_bins_count:
+            if count >= self._goal:
+                points_met += 1
+        return points_met
+    
+
     def next(self, rand=False):
         '''
         Returns the next item currently not meeting the coverage goal.
@@ -434,7 +467,7 @@ class CoverGroup(CoverageNet):
         return True
     
 
-    def _macro_to_str(self, i) -> str:
+    def _macro_to_string(self, i) -> str:
         '''
         Write a macro_bin as a string.
         '''
@@ -455,18 +488,18 @@ class CoverGroup(CoverageNet):
         return result
 
 
-    def to_str(self, verbose: bool=False) -> str:
+    def to_string(self, verbose: bool=False) -> str:
         result = ''
         # print each individual bin and its goal status
         if verbose == True:
             # determine the string formatting by identifying longest string
-            longest_len = _find_longest_str_len([self._macro_to_str(i) for i, _ in enumerate(self._macro_bins)])
+            longest_len = _find_longest_str_len([self._macro_to_string(i) for i, _ in enumerate(self._macro_bins)])
             is_first = True
             # print the coverage analysis
             for i, group in enumerate(self._macro_bins):
                 if is_first == False:
                     result += '\n    '
-                phrase = str(self._macro_to_str(i))
+                phrase = str(self._macro_to_string(i))
                 count = self._macro_bins_count[i]
                 result += str(phrase) + ': ' + (' ' * (longest_len - len(str(phrase)))) + str(count) + '/' + str(self._goal)
                 # enumerate on all mapped values that were detected for this bin
@@ -559,6 +592,14 @@ class CoverRange(CoverageNet):
         return self._num_of_steps
     
 
+    def get_points_met(self) -> int:
+        points_met = 0
+        for entry in self._table_counts:
+            if entry >= self._goal:
+                points_met += 1
+        return points_met
+    
+
     def passed(self) -> bool:
         '''
         Checks if each bin within the `CoverGroup` has met or exceeded its goal. 
@@ -649,7 +690,7 @@ class CoverRange(CoverageNet):
         return expanded_space[0]
     
 
-    def to_str(self, verbose: bool) -> str:
+    def to_string(self, verbose: bool) -> str:
         result = ''
         # print each individual bin and its goal status
         if verbose == True:
@@ -700,7 +741,7 @@ class CoverPoint(CoverageNet):
     CoverPoints are designed to track when a single particular event occurs.
     '''
 
-    def __init__(self, name: str, goal: int, bypass=False, mapping=None):
+    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None):
         '''
         Initialize a CoverPoint. 
         
@@ -737,6 +778,13 @@ class CoverPoint(CoverageNet):
 
     def get_partition_count(self) -> int:
         return 2
+    
+
+    def get_points_met(self) -> int:
+        '''
+        Returns the number of points that have met their goal.
+        '''
+        return 1 if self._count >= self._goal else 0
 
 
     def cover(self, item):
@@ -756,7 +804,7 @@ class CoverPoint(CoverageNet):
         return self._count >= self._goal
     
 
-    def to_str(self, verbose: bool):
+    def to_string(self, verbose: bool):
         return str(self._count) + '/' + str(self._goal)
     
     pass
@@ -843,6 +891,13 @@ class CoverCross(CoverageNet):
 
     def _map_onto_range(self, item):
         return self._flatten(item)
+    
+
+    def get_points_met(self) -> int:
+        '''
+        Returns the number of points that have met their goal.
+        '''
+        return self._inner.get_points_met()
 
 
     def cover(self, item):
@@ -856,8 +911,8 @@ class CoverCross(CoverageNet):
         return self._inner.passed()
     
 
-    def to_str(self, verbose: bool):
-        return self._inner.to_str(verbose)
+    def to_string(self, verbose: bool):
+        return self._inner.to_string(verbose)
 
     pass
 

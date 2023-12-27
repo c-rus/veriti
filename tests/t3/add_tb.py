@@ -165,7 +165,7 @@ while Coverage.all_passed(MAX_SIMS) == False:
     # update coverages
     cg_in0_full.cover(txn.in0)
     cg_in1_full.cover(txn.in1)
-    cg_in0_extremes.cover(int(txn.in0))
+    cg_in0_extremes.cover(txn.in0)
     cg_in1_extremes.cover(txn.in1)
     cg_in0_cross_in1.cover((txn.in0, txn.in1))
     cp_in0_in1_eq_0.cover(input_pair)

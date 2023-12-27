@@ -297,13 +297,17 @@ def read(logfile: str, level: int) -> str:
     return result
 
 
-def check() -> bool:
+def check(threshold: float=1.0) -> bool:
     '''
-    Checks if there were any errors in the simulation
+    Determines if verification passed based on meeting or exceeding the threshold value.
+
+    ### Parameters
+    - `threshold` expects a floating point value [0, 1.0]
     '''
-    from . import config
     lg = Log.load(get_event_log_path())
-    return lg.is_success()
+    if lg.get_test_count() <= 0:
+        return True
+    return float(lg.get_pass_count()/lg.get_test_count()) >= threshold
 
 
 def get_event_log_path() -> str:
