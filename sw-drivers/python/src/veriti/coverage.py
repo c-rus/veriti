@@ -5,6 +5,7 @@
 # - coverpoints
 # - coverranges
 # - covergroups
+# - covercrosses
 
 from abc import ABC as _ABC
 from enum import Enum as _Enum
@@ -71,6 +72,8 @@ class Coverage(_ABC):
             label = 'Covergroup'
         elif issubclass(type(self), Coverrange):
             label = 'Coverrange'
+        elif issubclass(type(self), Covercross):
+            label = 'Covercross'
         if verbose == False:
             return label + ": " + self._name + ': ' + self.to_str(verbose) + ' ...'+str(self.status().name)
         else:
@@ -478,8 +481,12 @@ class Coverrange(Coverage):
         '''
         Checks if the mapping was legal and within the bounds.
         '''
-        mapped_item = int(item) if self._map == None else int(self._map(item))
+        mapped_item = self._map_value(item)
         return mapped_item >= self._start and mapped_item < self._stop
+    
+
+    def _map_value(self, item) -> int:
+        return int(item) if self._map == None else int(self._map(item))
 
 
     def cover(self, item) -> bool:
@@ -489,7 +496,7 @@ class Coverrange(Coverage):
         This means that the item covered is under the goal.
         '''
         # convert item to int
-        mapped_item = int(item) if self._map == None else int(self._map(item))
+        mapped_item = self._map_value(item)
         # transform into coverage domain
         index = int(mapped_item / self._step_size)
         # check if it improves progessing by adding to a mapping that has not met the goal yet
@@ -611,15 +618,24 @@ class Coverpoint(Coverage):
         pass
 
 
-    def cover(self, cond: bool):
+    def _is_possible_value(self, item) -> bool:
+        '''
+        Checks if the mapping was legal and within the bounds.
+        '''
+        mapped_item = int(self._map_value(item))
+        return mapped_item >= 0 and mapped_item < 2
+    
+
+    def _map_value(self, item) -> int:
+        return int(item) if self._mapping == None else int(self._mapping(item))
+
+
+    def cover(self, item):
         '''
         Returns `True` if the `cond` was satisfied and updates the internal count
         as the coverpoint tries to met or exceed its goal.
         '''
-        # use the custom mapping
-        if type(cond) != bool and self._mapping != None:
-            cond = bool(self._mapping(cond))
-            pass
+        cond = self._map_value(item)
         if cond == True:
             self._count += 1
         return cond
@@ -632,6 +648,109 @@ class Coverpoint(Coverage):
     def to_str(self, verbose: bool):
         return str(self._count) + '/' + str(self._goal)
     
+
+    def get_range(self) -> range:
+        return range(0, 2)
+    
+
+    def get_step_count(self) -> int:
+        return 2
+    
     pass
 
 
+class Covercross(Coverage):
+    '''
+    Covercrosses are designed to track cross products between two or more coverage nets.
+
+    Internally, a Covercross stores a Coverrange for the 1-dimensional flatten version of
+    the N-dimensional cross product across the different coverage nets.
+    '''
+    from typing import List as _List
+
+    def __init__(self, name: str, nets: _List[Coverrange], goal: int=1, bypass=False):
+        self._nets = nets[::-1]
+        self._crosses = len(self._nets)
+        
+        combinations = 1
+        for n in nets:
+            combinations *= n.get_step_count()
+            pass
+
+        self._inner = Coverrange(
+            name,
+            span=range(combinations),
+            goal=goal,
+            bypass=bypass,
+            max_steps=None,
+            mapping=None,
+        )
+        # remove that entry and use this instance
+        self._group.pop()
+        # overwrite the entry with this instance in the class-wide data structure
+        super().__init__(name, bypass)
+        pass
+
+
+    def _flatten(self, pair):
+        '''
+        Flattens a N-dimensional item into a 1-dimensional index.
+
+        Reference: 
+        - https://stackoverflow.com/questions/7367770/how-to-flatten-or-index-3d-array-in-1d-array
+        '''
+        if len(pair) != self._crosses:
+            raise Exception("Expects "+str(self._crosses)+" values in pair")
+        index = 0
+        # dimensions go: x, y, z... so reverse the tuple/list
+        for i, p in enumerate(pair[::-1]):
+            if self._nets[i]._is_possible_value(p) == False:
+                raise Exception("Value out of bounds")
+            mapped_element = self._nets[i]._map_value(p)
+            # collect all above step counts
+            acc_step_counts = 1
+            for j in range(i+1, self._crosses):
+                acc_step_counts *= self._nets[j].get_step_count()
+            index += acc_step_counts * int(mapped_element / self._nets[i].get_range().step)
+        return index
+
+
+    def cover(self, pair):
+        return self._inner.cover(self._flatten(pair))
+
+
+    def passed(self):
+        return self._inner.passed()
+    
+
+    def to_str(self, verbose: bool):
+        return self._inner.to_str(verbose)
+
+    pass
+
+
+import unittest as _ut
+
+class __Test(_ut.TestCase):
+
+    def test_cross_flatten_2d(self):
+        cross = Covercross('test', [Coverrange('a', span=range(0, 4)), Coverrange('b', span=range(0, 4))])
+        self.assertEqual(0, cross._flatten((0, 0)))
+        self.assertEqual(3, cross._flatten((3, 0)))
+        self.assertEqual(4, cross._flatten((0, 1)))
+        self.assertEqual(5, cross._flatten((1, 1)))
+        self.assertEqual(15, cross._flatten((3, 3)))
+        pass
+
+    def test_cross_flatten_3d(self):
+        cross = Covercross('test', [Coverrange('a', span=range(0, 2)), Coverrange('b', span=range(0, 3)), Coverrange('c', span=range(0, 4))])
+        self.assertEqual(0, cross._flatten((0, 0, 0)))
+        self.assertEqual(1, cross._flatten((1, 0, 0)))
+        self.assertEqual(2*1, cross._flatten((0, 1, 0)))
+        self.assertEqual(2*2, cross._flatten((0, 2, 0)))
+        self.assertEqual(6, cross._flatten((0, 0, 1)))
+        self.assertEqual(1 + 2 + 6, cross._flatten((1, 1, 1)))
+        self.assertEqual(1 + 2*2 + 3*6, cross._flatten((1, 2, 3)))
+        pass
+
+    pass

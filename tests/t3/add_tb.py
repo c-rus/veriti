@@ -21,7 +21,7 @@ MAX_SIMS = 5_000
 
 # Cover the case that cin is asserted at least 100 times.
 cp_cin_asserted = Coverpoint(
-    "cin asserted", 
+    "cin asserted",
     goal=100,
     mapping=lambda x: int(x) == 1
 )
@@ -67,13 +67,17 @@ cg_in1_full = Coverrange(
 
 # Make sure all combinations of input bins are tested at least once. It is possible
 # to define this cross coverage as a Coverrange.
-cg_in0_cross_in1 = Coverrange(
+cg_in0_cross_in1 = Covercross(
     "in0 cross in1",
-    span=range(cg_in0_full.get_step_count() * cg_in1_full.get_step_count()),
-    goal=1,
-    max_steps=None,
-    mapping=lambda pair: (cg_in0_full.get_step_count() * int(int(pair[0]) / cg_in0_full.get_range().step)) + int(int(pair[1]) / cg_in1_full.get_range().step),
+    nets=[cg_in0_full, cg_in1_full]
 )
+# cg_in0_cross_in1 = Coverrange(
+#     "in0 cross in1",
+#     span=range(cg_in0_full.get_step_count() * cg_in1_full.get_step_count()),
+#     goal=1,
+#     max_steps=None,
+#     mapping=lambda pair: (cg_in0_full.get_step_count() * int(int(pair[0]) / cg_in0_full.get_range().step)) + int(int(pair[1]) / cg_in1_full.get_range().step),
+# )
 
 # Check to make sure both inputs are 0 at the same time at least once.
 cp_in0_in1_eq_0    = Coverpoint(
@@ -88,8 +92,6 @@ cp_in0_in1_eq_max  = Coverpoint(
     goal=1,
     mapping=lambda pair: int(pair[0]) == pair[0].max() and int(pair[1]) == pair[1].max()
 )
-
-
 
 # Define the functional model
 class Adder:
@@ -128,7 +130,8 @@ while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
     txn = randomize(model)
 
-    # prioritize reaching coverage for all possible inputs first
+    # Implement coverage-driven test generation (CDTG) by prioritizing
+    # unfulfilled coverage goals during the input randomization step.
     if cg_in0_full.passed() == False:
         txn.in0.set(int(cg_in0_full.next(rand=True)))
     elif cg_in1_full.passed() == False:
