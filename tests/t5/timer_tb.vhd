@@ -6,7 +6,9 @@ use std.textio.all;
 
 library work;
 use work.standard.all;
-use work.veriti.all;
+
+library veriti;
+use veriti.veriti.all;
 
 entity timer_tb is
   generic (

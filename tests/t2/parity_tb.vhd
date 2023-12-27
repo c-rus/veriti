@@ -10,10 +10,11 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-library work;
+library std;
 use std.textio.all;
-use work.veriti;
-use work.casting;
+
+library veriti;
+use veriti.veriti.all;
 
 entity parity_tb is 
     generic (
@@ -63,7 +64,7 @@ begin
             if endfile(fd) = false then
                 -- drive a transaction
                 readline(fd, row);
-                veriti.drive(row, bfm.data);
+                drive(row, bfm.data);
             end if;
         end procedure;
 
@@ -75,8 +76,8 @@ begin
             if endfile(fd) = false then
                 -- compare measured outputs with expected outputs
                 readline(fd, row);
-                veriti.load(row, expct.check_bit);
-                veriti.log_assertion(ld, bfm.check_bit, expct.check_bit, "check_bit");
+                load(row, expct.check_bit);
+                log_assertion(ld, bfm.check_bit, expct.check_bit, "check_bit");
             end if;
         end procedure;
 
@@ -92,7 +93,7 @@ begin
         end loop;
 
         -- halt the simulation
-        veriti.complete(halt);
+        complete(halt);
     end process;
 
 end architecture;

@@ -1,12 +1,7 @@
---------------------------------------------------------------------------------
---! Project: veriti
---! Author: Chase Ruskin
---! Created: 2023-12-16
---! Package: casting
---! Details:
---!     Conversion functions between data types in VHDL. These functions
---!     are called in higher-level hardware driver layer functions.
---------------------------------------------------------------------------------
+-- Project: veriti
+-- Package: casting
+-- Conversion functions between data types in VHDL. These functions
+-- are called in higher-level hardware driver layer functions.
 
 library ieee;
 use ieee.std_logic_1164.all;

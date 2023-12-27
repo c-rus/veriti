@@ -23,9 +23,12 @@ jobs:
           pip install -r "$(orbit env ORBIT_HOME)/profiles/crus/requirements.txt"
           orbit config --append include="profiles/crus/config.toml"
 
-      - name: Initialize orbit package
+      - name: Initialize orbit package and environment
         run: |
-          orbit init
+          orbit install --path hw-drivers
+          orbit init test
+          echo "/hw-drivers" > .orbitignore
+          echo "veriti = \"0.1.0\"" >> Orbit.toml
 
       - name: Run tests
         run: |
@@ -69,11 +72,14 @@ jobs:
 
       - name: Install veriti software drivers
         run: |
-          pip install ./sw-drivers/python
+          pip install sw-drivers/python
 
-      - name: Initialize orbit package
+      - name: Initialize orbit package and environment
         run: |
-          orbit init
+          orbit install --path hw-drivers
+          orbit init test
+          echo "/hw-drivers" > .orbitignore
+          echo "veriti = \"0.1.0\"" >> Orbit.toml
 
       - name: Test parity module
         run: |

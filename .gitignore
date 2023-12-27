@@ -1,9 +1,10 @@
-build/
-Orbit.toml
-Orbit.lock
+/build
+/Orbit.toml
+/Orbit.lock
+/.orbitignore
 
 *.egg-info
 __pycache__
 
-todo.md
-justfile
+/todo.md
+/justfile

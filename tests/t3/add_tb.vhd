@@ -1,10 +1,11 @@
 library ieee;
 use ieee.std_logic_1164.all;
+
 library std;
 use std.textio.all;
 
-library work;
-use work.veriti.all;
+library veriti;
+use veriti.veriti.all;
 
 entity add_tb is
     generic (

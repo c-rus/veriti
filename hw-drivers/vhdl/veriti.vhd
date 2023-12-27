@@ -1,12 +1,8 @@
---------------------------------------------------------------------------------
---! Project: veriti
---! Author: Chase Ruskin
---! Created: 2021-10-17
---! Package: veriti
---! Details:
---!     Low-level functions interacting between raw data layer and hardware 
---!     description for testbenches.
---------------------------------------------------------------------------------
+-- Project: veriti
+-- Package: veriti
+-- Low-level functions interacting between raw data layer and hardware 
+-- description for testbenches.
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;

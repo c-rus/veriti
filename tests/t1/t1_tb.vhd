@@ -19,8 +19,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use std.textio.all;
 
-library work;
-use work.veriti.all;
+library veriti;
+use veriti.veriti.all;
 
 entity t1_tb is
 end entity;
