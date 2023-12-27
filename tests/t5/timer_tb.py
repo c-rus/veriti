@@ -7,7 +7,7 @@
 
 import random
 import veriti as vi
-from veriti.coverage import Coverage, Coverpoint
+from veriti.coverage import Coverage, CoverPoint
 from veriti.model import Signal, Mode
 from veriti.trace import TraceFile
 
@@ -26,13 +26,13 @@ cp_map: dict = {}
 # verify each tick is enabled at least 3 times
 for tick in SUB_DELAYS:
     cp_map[tick] = \
-        Coverpoint(
+        CoverPoint(
             name='tick '+str(tick)+' triggered',
             goal=3
         )
     pass
 # verify the common delay is enabled
-cp_base = Coverpoint(name="base tick triggered", goal=3)
+cp_base = CoverPoint(name="base tick triggered", goal=3)
 
 # Define functional model
 

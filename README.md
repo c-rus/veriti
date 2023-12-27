@@ -56,7 +56,7 @@ The workflow is broken down into 3 main steps:
 
 3. Run a software program (`veriti`) to interpret/analyze outcomes stored in log file. If all tests passed, then the program exits with code `0`. If any tests failed, then the program exits with code `101`.
 
-When the software model is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, which can either a `Coverpoint`, `Coverrange`, or `Covergroup`.
+When the software model is generating tests, it can also keep track of what test cases are being covered by using _coverage nets_, such as `CoverGroups` or `CoverPoints`. By handling coverages in software, it allows for coverage-driven test generation (CDTG) by choosing the next set of inputs that will work toward achieving total coverage.
 
 Once the test files are generated at the raw data layer, the simulation can begin in the hardware description language. At the hardware drivers layer, a package of functions exist for clock generation, system reseting, signal driving, signal montioring, and logging.
 
@@ -74,3 +74,7 @@ For the VHDL packages, run the following command from this file's directory:
 ```
 orbit install --path ./hw-drivers
 ```
+
+## Related Works
+
+- [cocotb](https://www.cocotb.org): coroutine based cosimulation testbench environment for verifying VHDL and SystemVerilog RTL using Python

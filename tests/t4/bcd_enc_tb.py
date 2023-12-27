@@ -11,7 +11,7 @@
 import random
 import veriti as vi
 from veriti.trace import TraceFile
-from veriti.coverage import Coverage, Covergroup, Coverpoint
+from veriti.coverage import Coverage, CoverGroup, CoverPoint
 from veriti.model import Signal, Mode
 
 # --- Constants ----------------------------------------------------------------
@@ -35,29 +35,29 @@ MAX_SIMS = 10_000
 # --- Coverage Goals -----------------------------------------------------------
 
 # specify coverage areas
-cp_go_while_active = Coverpoint(
+cp_go_while_active = CoverPoint(
     "go while active", 
     goal=100
 )
-cp_overflow_en = Coverpoint(
+cp_overflow_en = CoverPoint(
     "overflow enabled", 
     goal=50, 
     bypass=(vi.pow2m1(WIDTH) < (10**DIGITS))
 )
-cp_bin_while_active = Coverpoint(
+cp_bin_while_active = CoverPoint(
     "input changes while active", 
     goal=100
 )
-cg_unique_inputs = Covergroup(
+cg_unique_inputs = CoverGroup(
     "binary value variants", 
     bins=[i for i in range(0, pow(2, WIDTH))]
 )
-cg_overflow = Covergroup(
+cg_overflow = CoverGroup(
     "overflow variants", 
     bins=[0, 1], 
     bypass=(vi.pow2m1(WIDTH) < (10**DIGITS))
 )
-cg_extreme_values = Covergroup(
+cg_extreme_values = CoverGroup(
     "extreme inputs", 
     bins=[0, vi.pow2m1(WIDTH)]
 )

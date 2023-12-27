@@ -5,7 +5,7 @@
 # - coverpoints
 # - coverranges
 # - covergroups
-# - covercrosses
+# - CoverCrosses
 
 from abc import ABC as _ABC
 from enum import Enum as _Enum
@@ -67,13 +67,13 @@ class Coverage(_ABC):
         Convert the coverage into a string for user logging purposes. Setting `verbose` to `True`
         will provide more details in the string contents.
         '''
-        label = 'Coverpoint' 
-        if issubclass(type(self), Covergroup):
-            label = 'Covergroup'
-        elif issubclass(type(self), Coverrange):
-            label = 'Coverrange'
-        elif issubclass(type(self), Covercross):
-            label = 'Covercross'
+        label = 'CoverPoint' 
+        if issubclass(type(self), CoverGroup):
+            label = 'CoverGroup'
+        elif issubclass(type(self), CoverRange):
+            label = 'CoverRange'
+        elif issubclass(type(self), CoverCross):
+            label = 'CoverCross'
         if verbose == False:
             return label + ": " + self._name + ': ' + self.to_str(verbose) + ' ...'+str(self.status().name)
         else:
@@ -187,7 +187,7 @@ class Coverage(_ABC):
     pass
 
 
-class Covergroup(Coverage):
+class CoverGroup(Coverage):
     from typing import List as _List
 
     group = []
@@ -325,7 +325,7 @@ class Covergroup(Coverage):
     
     def passed(self) -> bool:
         '''
-        Checks if each bin within the `Covergroup` has met or exceeded its goal. 
+        Checks if each bin within the `CoverGroup` has met or exceeded its goal. 
         If any of the bins has not, then whole function fails and returns `False`.
         '''
         for val in self._macro_bins_count:
@@ -398,16 +398,16 @@ class Covergroup(Coverage):
     pass
 
 
-class Coverrange(Coverage):
+class CoverRange(Coverage):
     '''
-    Coverranges are designed to track a span of integer numbers, which can divided up among steps.
-    This structure is similar to a Covergroup, however, the bins defined in a Coverrange are implicitly defined
+    CoverRanges are designed to track a span of integer numbers, which can divided up among steps.
+    This structure is similar to a CoverGroup, however, the bins defined in a CoverRange are implicitly defined
     along the set of integers.
     '''
 
     def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None):
         '''
-        Initialize a Coverrange. 
+        Initialize a CoverRange. 
         
         The `mapping` argument is a callable function that expects to return an `int`, 
         which effectively takes some outside input(s) and maps it to a number within 
@@ -453,7 +453,7 @@ class Coverrange(Coverage):
 
     def get_range(self) -> range:
         '''
-        Returns the range struct for the Coverrange.
+        Returns the range struct for the CoverRange.
         '''
         return range(self._start, self._stop, self._step_size)
     
@@ -467,7 +467,7 @@ class Coverrange(Coverage):
 
     def passed(self) -> bool:
         '''
-        Checks if each bin within the `Covergroup` has met or exceeded its goal. 
+        Checks if each bin within the `CoverGroup` has met or exceeded its goal. 
         If any of the bins has not, then whole function fails and returns `False`.
         '''
         for entry in self._table_counts:
@@ -597,14 +597,14 @@ class Coverrange(Coverage):
         return result
 
 
-class Coverpoint(Coverage):
+class CoverPoint(Coverage):
     '''
-    Coverpoints are designed to track when a single particular event occurs.
+    CoverPoints are designed to track when a single particular event occurs.
     '''
 
     def __init__(self, name: str, goal: int, bypass=False, mapping=None):
         '''
-        Initialize a Coverpoint. 
+        Initialize a CoverPoint. 
         
         The `mapping` argument is a callable function that
         expects to return a `bool`, which effectively takes some outside input(s) and
@@ -659,16 +659,16 @@ class Coverpoint(Coverage):
     pass
 
 
-class Covercross(Coverage):
+class CoverCross(Coverage):
     '''
-    Covercrosses are designed to track cross products between two or more coverage nets.
+    CoverCrosses are designed to track cross products between two or more coverage nets.
 
-    Internally, a Covercross stores a Coverrange for the 1-dimensional flatten version of
+    Internally, a CoverCross stores a CoverRange for the 1-dimensional flatten version of
     the N-dimensional cross product across the different coverage nets.
     '''
     from typing import List as _List
 
-    def __init__(self, name: str, nets: _List[Coverrange], goal: int=1, bypass=False):
+    def __init__(self, name: str, nets: _List[CoverRange], goal: int=1, bypass=False):
         self._nets = nets[::-1]
         self._crosses = len(self._nets)
         
@@ -677,7 +677,7 @@ class Covercross(Coverage):
             combinations *= n.get_step_count()
             pass
 
-        self._inner = Coverrange(
+        self._inner = CoverRange(
             name,
             span=range(combinations),
             goal=goal,
@@ -734,7 +734,7 @@ import unittest as _ut
 class __Test(_ut.TestCase):
 
     def test_cross_flatten_2d(self):
-        cross = Covercross('test', [Coverrange('a', span=range(0, 4)), Coverrange('b', span=range(0, 4))])
+        cross = CoverCross('test', [CoverRange('a', span=range(0, 4)), CoverRange('b', span=range(0, 4))])
         self.assertEqual(0, cross._flatten((0, 0)))
         self.assertEqual(3, cross._flatten((3, 0)))
         self.assertEqual(4, cross._flatten((0, 1)))
@@ -743,7 +743,7 @@ class __Test(_ut.TestCase):
         pass
 
     def test_cross_flatten_3d(self):
-        cross = Covercross('test', [Coverrange('a', span=range(0, 2)), Coverrange('b', span=range(0, 3)), Coverrange('c', span=range(0, 4))])
+        cross = CoverCross('test', [CoverRange('a', span=range(0, 2)), CoverRange('b', span=range(0, 3)), CoverRange('c', span=range(0, 4))])
         self.assertEqual(0, cross._flatten((0, 0, 0)))
         self.assertEqual(1, cross._flatten((1, 0, 0)))
         self.assertEqual(2*1, cross._flatten((0, 1, 0)))
