@@ -59,8 +59,8 @@ class Timer:
 random.seed(R_SEED)
 
 # create empty test vector files
-inputs = TraceFile('inputs', mode='in').open()
-outputs = TraceFile('outputs', mode='out').open()
+inputs = TraceFile('inputs.trace', mode='in').open()
+outputs = TraceFile('outputs.trace', mode='out').open()
 
 base_count = 0
 counts = [0] * len(SUB_DELAYS)

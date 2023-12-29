@@ -238,7 +238,10 @@ class Log:
         '''
         Parses the provided file to store the collection of records.
         '''
+        # import os
         log = None
+        # if os.path.exists(path) == False or os.path.isfile(path) == False:
+        #     raise Exception("No such file: " + str(path))
         with open(path, 'r') as f:
             log = Log.from_str(f.read())
         return log
@@ -334,6 +337,18 @@ def get_name() -> str:
     hardware simulation.
     '''
     return config.Config().get_sim_log()
+
+
+def set_log_name(name: str):
+    '''
+    Sets the file name for the log file.
+
+    This function can be helpful in keeping the log name synchronous between the
+    software library and the HDL simulation.
+    '''
+    config.Config()._sim_log = name
+    pass
+
 
 
 import unittest as _ut

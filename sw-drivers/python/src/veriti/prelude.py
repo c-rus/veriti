@@ -8,3 +8,4 @@ from .model import *
 from .coverage import *
 from .lib import *
 from .config import rng_seed, get_generic
+from .log import set_log_name

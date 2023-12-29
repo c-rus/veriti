@@ -44,8 +44,8 @@ model = Parity(
 )
 
 # create empty test vector files
-inputs = TraceFile('inputs', mode='in').open()
-outputs = TraceFile('outputs', mode='out').open()
+inputs = TraceFile('inputs.trace', mode='in').open()
+outputs = TraceFile('outputs.trace', mode='out').open()
 
 # set and get the rng seed
 RNG_SEED = vi.rng_seed(0)

@@ -24,7 +24,7 @@ class TraceFile:
         else:
             self._dir = config.Config()._working_dir
 
-        self._path = os.path.join(self._dir, self._name + config.Config()._TRACE_FILE_EXT)
+        self._path = os.path.join(self._dir, self._name)
         
         self._exists = os.path.exists(self._path)
         # clear the existing file

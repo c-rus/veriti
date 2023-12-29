@@ -121,8 +121,8 @@ class Adder:
 # Prepare the traces for simulation
 
 # create empty test vector files
-inputs = TraceFile('inputs', Mode.IN).open()
-outputs = TraceFile('outputs', Mode.OUT).open()
+inputs = TraceFile('inputs.trace', Mode.IN).open()
+outputs = TraceFile('outputs.trace', Mode.OUT).open()
 
 model = Adder(width=WIDTH)
 

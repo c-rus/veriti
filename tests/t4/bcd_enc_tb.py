@@ -119,8 +119,8 @@ class BcdEncoder:
 random.seed(R_SEED)
 
 # create empty test vector files
-inputs = TraceFile('inputs', Mode.IN).open()
-outputs = TraceFile('outputs', Mode.OUT).open()
+inputs = TraceFile('inputs.trace', Mode.IN).open()
+outputs = TraceFile('outputs.trace', Mode.OUT).open()
 
 # initialize the values with defaults
 inputs.append(BcdEncoder(WIDTH, DIGITS))
