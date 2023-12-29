@@ -2,27 +2,29 @@ from . import config
 
 class TraceFile:
     from .model import Mode
+    from typing import List as _List
 
-    def __init__(self, name: str, mode: Mode, dir: str=None):
+    def __init__(self, name: str, mode: Mode, dir: str=None, order: _List[str]=None):
         '''
         Creates a trace file to write stimuli/results for a potential hardware simulation.
         
-        The .trace file extension will be automatically appended to the provided `name`.
+        ### Parameters
+        - The `name` argument sets the file's name. It is common to use a '.trace' file extension.
+        - The `mode` argument determines which directional ports to capture when writing to the file.
+        - The `dir` arguments specifies the directory to save the file to. If omitted, it will use the default
+        working directory set by Veriti.
+        - The `order` argument is the list of port names to write. It must include all ports that match the direction
+        set by `mode`. This list determines the order in which to serialize the data when writing traces. If omitted,
+        the port order is determined by the order found in the HDL top-level port interface.
         '''
         import os
         from .model import Mode
 
         self._name = name
         # try to decode str if provided as a string
-        if isinstance(mode, str) == True:
-            self._mode = Mode.from_str(mode)
-        else:
-            self._mode = mode
+        self._mode = mode if isinstance(mode, str) == False else Mode.from_str(mode)
 
-        if dir != None:
-            self._dir = dir
-        else:
-            self._dir = config.Config()._working_dir
+        self._dir = dir if dir != None else config.Config()._working_dir
 
         self._path = os.path.join(self._dir, self._name)
         

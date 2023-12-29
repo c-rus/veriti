@@ -111,7 +111,9 @@ class Signal:
         a list, it will use this instance's minimum and maximum values as the range for the sample space and partition
         accordingly based on the number of weights.
         '''
-        self._mode = mode
+
+        self._mode = mode if isinstance(mode, str) == False else Mode.from_str(mode)
+
         self._width = width if width != None else 1
         if self._width <= 0:
             raise Exception('Signal cannot have width less than or equal to 0')
@@ -119,6 +121,7 @@ class Signal:
         # specify the order of the bits (big-endian is MSB first)
         if endianness != 'big' and endianness != 'little':
             raise Exception("Signal must either have 'big' or 'little' endianness")
+        
         self._big_endian = str(endianness).lower() == 'big'
 
         # provide an initialized value
