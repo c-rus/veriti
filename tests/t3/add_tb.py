@@ -10,89 +10,10 @@
 import random
 from veriti.prelude import *
 
-# initialize the randomness seed
-random.seed(rng_seed(0))
-# collect generics
-WIDTH = get_generic(key='LEN', type=int)
-
 MAX_SIMS = 5_000
 
-# Specify coverage areas
-
-# Cover the case that cin is asserted at least 100 times.
-cp_cin_asserted = CoverPoint(
-    "cin asserted",
-    goal=100,
-    mapping=lambda x: int(x) == 1
-)
-
-# Cover the case that the carry out is generated at least 10 times.
-cp_cout_gen = CoverPoint(
-    "cout generated", 
-    goal=10,
-    mapping=lambda x: int(x) == 1
-)
-
-# Cover the extreme edge cases for in0 (min and max) at least 10 times.
-cg_in0_extremes = CoverGroup(
-    "in0 extremes",
-    bins=[0, pow2m1(WIDTH)],
-    goal=10
-)
-
-# Cover the extreme edge cases for in1 (min and max) at least 10 times.
-cg_in1_extremes = CoverGroup(
-    "in1 extremes",
-    bins=[0, pow2m1(WIDTH)],
-    goal=10,
-    mapping=lambda x: int(x)
-)
-
-# Cover the entire range for in0 into at most 16 bins and make sure
-# each bin is tested at least once.
-cg_in0_full = CoverRange(
-    "in0 full",
-    span=range(0, pow2(WIDTH)),
-    goal=1,
-    max_steps=16
-)
-
-# Cover the entire range for in1 into at most 16 bins and make sure 
-# each bin is tested at least once.
-cg_in1_full = CoverRange(
-    "in1 full",
-    span=range(0, pow2(WIDTH)),
-    goal=1,
-    max_steps=16
-)
-
-# Make sure all combinations of input bins are tested at least once. It is possible
-# to define this cross coverage as a CoverRange.
-cg_in0_cross_in1 = CoverCross(
-    "in0 cross in1",
-    nets=[cg_in0_full, cg_in0_full]
-)
-# cg_in0_cross_in1 = CoverRange(
-#     "in0 cross in1",
-#     span=range(cg_in0_full.get_step_count() * cg_in1_full.get_step_count()),
-#     goal=1,
-#     max_steps=None,
-#     mapping=lambda pair: (cg_in0_full.get_step_count() * int(int(pair[0]) / cg_in0_full.get_range().step)) + int(int(pair[1]) / cg_in1_full.get_range().step),
-# )
-
-# Check to make sure both inputs are 0 at the same time at least once.
-cp_in0_in1_eq_0    = CoverPoint(
-    "in0 and in1 equal 0", 
-    goal=1,
-    mapping=lambda pair: int(pair[0]) == 0 and int(pair[1]) == 0
-)
-
-# Check to make sure both inputs are the maximum value at the same time at least once.
-cp_in0_in1_eq_max  = CoverPoint(
-    "in0 and in1 equal max", 
-    goal=1,
-    mapping=lambda pair: int(pair[0]) == pair[0].max() and int(pair[1]) == pair[1].max()
-)
+# collect generics
+WIDTH = get_generic(key='LEN', type=int)
 
 # Define the functional model
 class Adder:
@@ -113,10 +34,90 @@ class Adder:
         # slice and dice
         self.sum.set(temp[1:])
         self.cout.set(temp[0])
-
-        cp_cout_gen.cover(self.cout)
         return self
     pass
+
+
+model = Adder(width=WIDTH)
+
+
+# Specify coverage areas
+
+# Cover the case that cin is asserted at least 100 times.
+cp_cin_asserted = CoverPoint(
+    "cin asserted",
+    goal=100,
+    mapping=lambda x: int(x) == 1,
+    observe=model.cin,
+)
+
+# Cover the case that the carry out is generated at least 10 times.
+cp_cout_gen = CoverPoint(
+    "cout generated", 
+    goal=10,
+    mapping=lambda x: int(x) == 1,
+    observe=model.cout,
+)
+
+# Cover the extreme edge cases for in0 (min and max) at least 10 times.
+cg_in0_extremes = CoverGroup(
+    "in0 extremes",
+    bins=[model.in0.min(), model.in0.max()],
+    goal=10,
+    observe=model.in0,
+)
+
+# Cover the extreme edge cases for in1 (min and max) at least 10 times.
+cg_in1_extremes = CoverGroup(
+    "in1 extremes",
+    bins=[model.in1.min(), model.in1.max()],
+    goal=10,
+    mapping=lambda x: int(x),
+    observe=model.in1,
+)
+
+# Cover the entire range for in0 into at most 16 bins and make sure
+# each bin is tested at least once.
+cg_in0_full = CoverRange(
+    "in0 full",
+    span=range(0, pow2(WIDTH)),
+    goal=1,
+    max_steps=16,
+    observe=model.in0,
+)
+
+# Cover the entire range for in1 into at most 16 bins and make sure 
+# each bin is tested at least once.
+cg_in1_full = CoverRange(
+    "in1 full",
+    span=range(0, model.in1.max()+1),
+    goal=1,
+    max_steps=16,
+    observe=model.in1
+)
+
+# Make sure all combinations of input bins are tested at least once. It is possible
+# to define this cross coverage as a CoverRange.
+cg_in0_cross_in1 = CoverCross(
+    "in0 cross in1",
+    nets=[cg_in0_full, cg_in1_full]
+)
+
+# Check to make sure both inputs are 0 at the same time at least once.
+cp_in0_in1_eq_0    = CoverPoint(
+    "in0 and in1 equal 0", 
+    goal=1,
+    mapping=lambda pair: int(pair[0]) == 0 and int(pair[1]) == 0,
+    observe=(model.in0, model.in1)
+)
+
+# Check to make sure both inputs are the maximum value at the same time at least once.
+cp_in0_in1_eq_max  = CoverPoint(
+    "in0 and in1 equal max", 
+    goal=1,
+    mapping=lambda pair: int(pair[0]) == pair[0].max() and int(pair[1]) == pair[1].max(),
+    observe=(model.in0, model.in1)
+)
 
 # Prepare the traces for simulation
 
@@ -124,7 +125,8 @@ class Adder:
 inputs = TraceFile('inputs.trace', Mode.IN).open()
 outputs = TraceFile('outputs.trace', Mode.OUT).open()
 
-model = Adder(width=WIDTH)
+# initialize the randomness seed
+random.seed(rng_seed(0))
 
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
@@ -159,18 +161,6 @@ while Coverage.all_passed(MAX_SIMS) == False:
         txn.in0.set(txn.in0.max())
         txn.in1.set(txn.in1.max())
         pass
-
-    input_pair = (txn.in0, txn.in1)
-
-    # update coverages
-    cg_in0_full.cover(txn.in0)
-    cg_in1_full.cover(txn.in1)
-    cg_in0_extremes.cover(txn.in0)
-    cg_in1_extremes.cover(txn.in1)
-    cg_in0_cross_in1.cover((txn.in0, txn.in1))
-    cp_in0_in1_eq_0.cover(input_pair)
-    cp_in0_in1_eq_max.cover(input_pair)
-    cp_cin_asserted.cover(txn.cin)
 
     # write each incoming transaction to the DUT
     inputs.append(txn)

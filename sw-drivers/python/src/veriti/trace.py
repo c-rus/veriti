@@ -88,15 +88,35 @@ class TraceFile:
         argument list. A newline is formed after all arguments
         '''
         from .model import Signal, get_ports
+        from .coverage import CoverageNet
+
+        port: Signal
+        net: CoverageNet
+
+        # ignore the name when collecting the ports for the given mode
+        ports = [p[1] for p in get_ports(model, mode=self._mode)]
+
+        # check if there are coverages to automatically update
+        for net in CoverageNet._group:
+            if net.is_observing() == True:
+                # verify the observation involves only signals being written for this transaction
+                subspace = net.get_watch_list()
+                for signal in subspace:
+                    # exit early if a signal being observed is not this transaction
+                    if signal not in ports:
+                        break
+                # perform an observation if the signals are in this transaction
+                else:
+                    net.cover(net.get_observation())
+            pass
+
         DELIM = ','
         NEWLINE = '\n'
 
         open_in_scope: bool = self._file == None
         fd = self._file if open_in_scope == False else open(self._path, 'a')
         
-        ports = get_ports(model, mode=self._mode)
-        port: Signal
-        for (_name, port) in ports:
+        for port in ports:
             fd.write(str(port.as_logic()) + DELIM)
         fd.write(NEWLINE)
         # close the file if it was opened in this current scope

@@ -180,16 +180,57 @@ def check(threshold: float=1.0) -> bool:
 
 
 class CoverageNet(_ABC):
+    '''
+    A CoverageNet is a generic base class for any converage type.
+    '''
     from abc import abstractmethod as _abstractmethod
+    from .model import Signal, Mode
 
     _group = []
     _counter = 0
 
-    def __init__(self, name: str, bypass: bool=False):
+    def __init__(self, name: str, bypass: bool=False, observe: Signal=None):
         self._name = name
         self._bypass = bypass
+        self._observe = observe
         CoverageNet._group += [self]
         pass
+
+    
+    def is_observing(self) -> bool:
+        '''
+        Checks if the CoverageNet is set up to watch a particular set of inputs
+        to automatically update coverages.
+        '''
+        return self._observe != None
+    
+
+    def get_watch_list(self):
+        '''
+        Returns a iterable object of the Signal objects that are being watched.
+        '''
+        from .model import Signal 
+
+        if hasattr(self, '_watch_list') == True:
+            return self._watch_list
+        
+        self._watch_list = []
+        if self.is_observing() == True:
+            # transform single signal into a list
+            if type(self._observe) == Signal:
+                self._watch_list = [self._observe]
+            else:
+                self._watch_list = list(self._observe)
+            pass
+
+        return self._watch_list
+    
+
+    def get_observation(self):
+        '''
+        Returns the object that is currently being observed for the CoverageNet.
+        '''
+        return self._observe
 
 
     @_abstractmethod
@@ -301,10 +342,11 @@ class CoverageNet(_ABC):
 
 class CoverGroup(CoverageNet):
     from typing import List as _List
+    from .model import Signal
 
     group = []
 
-    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None):
+    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, observe: Signal=None):
         '''
         Initialize by expliciting defining the bins.
         '''
@@ -349,7 +391,7 @@ class CoverGroup(CoverageNet):
         self._goal = goal
         # initialize the total count of all covers
         self._total_count = 0
-        super().__init__(name, bypass)
+        super().__init__(name=name, bypass=bypass, observe=observe)
         pass
 
 
@@ -536,8 +578,9 @@ class CoverRange(CoverageNet):
     This structure is similar to a CoverGroup, however, the bins defined in a CoverRange are implicitly defined
     along the set of integers.
     '''
+    from .model import Signal
 
-    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None):
+    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, observe: Signal=None):
         '''
         Initialize a CoverRange. 
         
@@ -578,11 +621,9 @@ class CoverRange(CoverageNet):
         # store the actual values when mapped items cover toward the goal
         self._mapped_items = dict()
 
-        super().__init__(name, bypass)
+        super().__init__(name=name, bypass=bypass, observe=observe)
         pass
 
-    def __exit__(self, type, value, traceback):
-        print('exit')
 
     def get_range(self) -> range:
         return range(self._start, self._stop, self._step_size)
@@ -740,20 +781,24 @@ class CoverPoint(CoverageNet):
     '''
     CoverPoints are designed to track when a single particular event occurs.
     '''
+    from .model import Signal
 
-    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None):
+    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, observe: Signal=None):
         '''
         Initialize a CoverPoint. 
         
-        The `mapping` argument is a callable function that
-        expects to return a `bool`, which effectively takes some outside input(s) and
-        maps it to the user-defined coverage point.
+        The `mapping` argument is a callable function that expects to return a `bool`, 
+        which effectively takes some outside input(s) and maps it to the user-defined 
+        coverage point.
+
+        The `observe` argument is a single Signal or a tuple of Signal to be sent to the mapping
+        function.
         '''
         self._count = 0
         self._goal = goal
         # define a custom function that should return a boolean to define the targeted point
         self._mapping = mapping
-        super().__init__(name, bypass)
+        super().__init__(name=name, bypass=bypass, observe=observe)
         pass
 
 
@@ -836,11 +881,35 @@ class CoverCross(CoverageNet):
             max_steps=None,
             mapping=None,
         )
+
+        net: CoverageNet
+        observe = []
+        for net in self._nets:
+            # cannot auto-track coverage if at least one net is not observing
+            if net.get_observation() == None:
+                observe = None
+                break
+            observe += [net.get_observation()]
+            pass
+
         # remove that entry and use this instance
         self._group.pop()
         # overwrite the entry with this instance in the class-wide data structure
-        super().__init__(name, bypass)
+        super().__init__(name=name, bypass=bypass, observe=observe)
         pass
+    
+    
+    def get_watch_list(self):
+        if hasattr(self, "_watch_list") == True:
+            return self._watch_list
+        
+        self._watch_list = []
+        
+        net: CoverageNet
+        for net in self._nets:
+            self._watch_list += net.get_watch_list()
+
+        return self._watch_list
 
 
     def get_range(self) -> range:

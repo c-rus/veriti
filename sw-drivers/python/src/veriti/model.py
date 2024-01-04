@@ -366,6 +366,8 @@ def randomize(model):
     '''
     Generates random input values for each attribute for the BFM. This is
     a convenience function for individually setting each signal randomly.
+
+    This function mutates the object `model` and returns a reference to the same object.
     '''
     sig: Signal
     for (_, sig) in get_ports(model, mode=Mode.IN):
