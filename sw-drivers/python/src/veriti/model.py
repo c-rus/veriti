@@ -6,7 +6,7 @@
 
 import random as _random
 from enum import Enum as _Enum
-from .lib import to_logic, from_logic, pow2m1
+from .lib import to_logic, from_logic, pow2m1, pow2
 from . import config
 
 
@@ -31,6 +31,19 @@ class Mode(_Enum):
             return Mode.LOCAL
         else:
             raise Exception('Failed to convert str '+s+' to type Mode')
+    pass
+
+
+class Strategy(_Enum):
+    NORMAL = 0,
+
+    @staticmethod
+    def from_str(s: str):
+        s = s.lower()
+        if s == 'normal':
+            return Strategy.NORMAL
+        else:
+            raise Exception('Failed to convert str '+s+' to type Strategy')
     pass
 
 
@@ -139,11 +152,27 @@ class Signal:
         pass
 
 
-    def mode(self) -> Mode:
+    def get_width(self) -> int:
+        '''
+        Accesses the number of bits set for this signal.
+        '''
+        return self._width
+    
+
+    def get_mode(self) -> Mode:
         '''
         Returns the type of port the signal is.
         '''
         return self._mode
+    
+
+    def get_range(self) -> range:
+        '''
+        Returns the range of possible values for the specified bit width.
+        
+        The start is inclusive and the end is exclusive.
+        '''
+        return range(self.min(), pow2(self.get_width()))
 
 
     def max(self) -> int:
@@ -151,7 +180,7 @@ class Signal:
         Returns the maximum possible integer value stored in the allotted bits
         (inclusive).
         '''
-        return pow2m1(self.width())
+        return pow2m1(self.get_width())
     
 
     def min(self) -> int:
@@ -160,13 +189,6 @@ class Signal:
         (inclusive).
         '''
         return 0
-    
-
-    def width(self) -> int:
-        '''
-        Accesses the number of bits set for this signal.
-        '''
-        return self._width
     
 
     def rand(self):
@@ -201,7 +223,7 @@ class Signal:
         If the signal is 'big-endian', then the MSB is first in the sequence. 
         Otherwise, the LSB is first in the sequence.
         '''
-        return to_logic(self.as_int(), self.width(), big_endian=self._big_endian)
+        return to_logic(self.as_int(), self.get_width(), big_endian=self._big_endian)
     
 
     def set(self, num, is_signed=False):
@@ -221,15 +243,15 @@ class Signal:
                 raise Exception("Value out of bounds")
             self._value = num % (self.max() + 1)
         elif type(num) == str:
-            if len(str(num)) > self.width():
+            if len(str(num)) > self.get_width():
                 raise Exception("Value out of bounds")
             # make sure to put into big-endianness first
             if self._big_endian == False:
                 # reverse endianness to be MSB first
                 num = num[::-1]
-            if self.width() < len(num):
+            if self.get_width() < len(num):
                 # use the rightmost bits (if applicable)
-                num = num[len(num)-self.width():]
+                num = num[len(num)-self.get_width():]
             self._value = from_logic(num, is_signed)
         else:
             raise Exception("Cannot set signal with type "+str(type(num)))
@@ -307,10 +329,6 @@ class Signal:
     def __int__(self):
         return self.as_int()
     
-
-    def get_range(self) -> range:
-        return range(self.min(), self.max()+1)
-    
     pass
 
 
@@ -350,7 +368,7 @@ def get_ports(model, mode: Mode):
     sig: Signal
     index: int
     for (key, (sig, index)) in __compile_ports(model).items():
-        use_mode = Mode.from_str(config.Config().get_port(index)['mode']) if sig.mode() == Mode.INFER else sig.mode()
+        use_mode = Mode.from_str(config.Config().get_port(index)['mode']) if sig.get_mode() == Mode.INFER else sig.get_mode()
         if use_mode != mode:
             continue
         results += [(index, key, sig)]
@@ -362,12 +380,14 @@ def get_ports(model, mode: Mode):
     return results
 
 
-def randomize(model):
+def randomize(model, strategy: str=None):
     '''
     Generates random input values for each attribute for the BFM. This is
     a convenience function for individually setting each signal randomly.
 
     This function mutates the object `model` and returns a reference to the same object.
+
+    A strategy can be provided to provide coverage-driven input test vectors.
     '''
     sig: Signal
     for (_, sig) in get_ports(model, mode=Mode.IN):

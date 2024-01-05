@@ -1,21 +1,10 @@
-# File: lib.py
-# Author: Chase Ruskin
-# Created: 2023-12-17
-# Details:
-#   Implements basic functions re-used across the library and throughout
-#   software modelling.
+# Project: veriti
+# Module: lib
 #
+# Implements basic functions re-used across the library and for end-user
+# functional models in software.
 
 import math as _math
-
-# --- Classes and Functions ----------------------------------------------------
-
-def pow2m1(width: int):
-    '''
-    Computes the following formula: `2^(width)-1`   
-    '''
-    return (2**width)-1
-
 
 def pow(base: int, exp: int):
     '''
@@ -28,7 +17,26 @@ def pow2(width: int):
     '''
     Computes the following formula: `2^(width)`
     '''
-    return (2**width)
+    return 2**width
+
+
+def pow2m1(width: int):
+    '''
+    Computes the following formula: `2^(width)-1`   
+    '''
+    return (2**width)-1
+
+
+def is_pow2(n: int) -> bool:
+    return _math.log2(n).is_integer()
+
+
+def clog2(n: int) -> int:
+    return int(_math.ceil(_math.log2(n)))
+
+
+def flog2p1(n: int) -> int:
+    return int(_math.floor(_math.log2(n) + 1))
 
 
 def to_logic(n, width: int=None, trunc: bool=True, big_endian=True) -> str:
@@ -110,7 +118,8 @@ def from_logic(b: str, signed: bool=False) -> int:
         return int('0b'+b, base=2)
 
 
-# --- Tests --------------------------------------------------------------------
+# Unit Tests
+
 import unittest as _ut
 
 class __Test(_ut.TestCase):

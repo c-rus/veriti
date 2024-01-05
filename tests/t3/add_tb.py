@@ -28,9 +28,10 @@ class Adder:
         self.cout = Signal()
         pass
 
+
     def evaluate(self):
         result = self.in0.as_int() + self.in1.as_int() + self.cin.as_int()
-        temp = Signal(width=self.in0.width()+1, value=result, endianness='big').as_logic()
+        temp = Signal(width=self.in0.get_width()+1, value=result, endianness='big').as_logic()
         # slice and dice
         self.sum.set(temp[1:])
         self.cout.set(temp[0])
@@ -39,7 +40,6 @@ class Adder:
 
 
 model = Adder(width=WIDTH)
-
 
 # Specify coverage areas
 
@@ -80,7 +80,7 @@ cg_in1_extremes = CoverGroup(
 # each bin is tested at least once.
 cg_in0_full = CoverRange(
     "in0 full",
-    span=range(0, pow2(WIDTH)),
+    span=model.in0.get_range(),
     goal=1,
     max_steps=16,
     observe=model.in0,
@@ -90,7 +90,7 @@ cg_in0_full = CoverRange(
 # each bin is tested at least once.
 cg_in1_full = CoverRange(
     "in1 full",
-    span=range(0, model.in1.max()+1),
+    span=model.in1.get_range(),
     goal=1,
     max_steps=16,
     observe=model.in1

@@ -9,6 +9,7 @@
 import veriti as vi
 from veriti.trace import TraceFile
 from veriti.model import Signal
+from veriti.coverage import Coverage, CoverRange, CoverPoint
 import random
 import hamming
 
@@ -43,28 +44,50 @@ model = Parity(
     width=vi.get_generic('SIZE', type=int)
 )
 
+cr_data = CoverRange(
+    name='data full',
+    span=model.data.get_range(),
+    max_steps=16,
+    observe=model.data
+)
+
+cp_check_bit_asserted = CoverPoint(
+    name='check bit asserted',
+    goal=20,
+    mapping=lambda x: int(x) == 1,
+    observe=model.check_bit
+)
+
+cp_check_bit_deasserted = CoverPoint(
+    name='check bit de-asserted',
+    goal=20,
+    mapping=lambda x: int(x) == 0,
+    observe=model.check_bit
+)
+
 # create empty test vector files
 inputs = TraceFile('inputs.trace', mode='in').open()
 outputs = TraceFile('outputs.trace', mode='out').open()
 
 # set and get the rng seed
-RNG_SEED = vi.rng_seed(0)
-random.seed(RNG_SEED)
+random.seed(vi.rng_seed(0))
 
 MAX_SIMS = 1_000
 
 data_values = []
 
 # generate test cases until total coverage is met or we reached max count
-for _ in range(0, MAX_SIMS):
+while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    txn = vi.randomize(model)
+    transaction = vi.randomize(model)
 
-    data_values += [int(txn.data)]
+    data_values += [int(transaction.data)]
 
-    inputs.append(txn)
-    txn = model.evaluate()
-    outputs.append(txn)
+    inputs.append(transaction)
+
+    transaction.evaluate()
+
+    outputs.append(transaction)
     pass
 
 inputs.close()
