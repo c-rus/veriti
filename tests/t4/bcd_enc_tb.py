@@ -14,10 +14,9 @@ from veriti.trace import TraceFile
 from veriti.coverage import Coverage, CoverGroup, CoverPoint
 from veriti.model import Signal, Mode
 
-# --- Constants ----------------------------------------------------------------
+# Declare test-wide constants
 
-# define the randomness seed
-R_SEED = vi.rng_seed(0)
+RNG_SEED = vi.rng_seed(0)
 
 # collect generics
 DIGITS = vi.get_generic('DIGITS', type=int)
@@ -30,45 +29,14 @@ WIDTH  = vi.get_generic('LEN', type=int)
 #  5  | 11 = 5 + 6
 FSM_DELAY = WIDTH+WIDTH+1+1
 
-MAX_SIMS = 10_000
+MAX_SIMS = 1_000
 
-# --- Coverage Goals -----------------------------------------------------------
+# Define the bus-functional model
 
-# specify coverage areas
-cp_go_while_active = CoverPoint(
-    "go while active", 
-    goal=100
-)
-cp_overflow_en = CoverPoint(
-    "overflow enabled", 
-    goal=50, 
-    bypass=(vi.pow2m1(WIDTH) < (10**DIGITS))
-)
-cp_bin_while_active = CoverPoint(
-    "input changes while active", 
-    goal=100
-)
-cg_unique_inputs = CoverGroup(
-    "binary value variants", 
-    bins=[i for i in range(0, pow(2, WIDTH))]
-)
-cg_overflow = CoverGroup(
-    "overflow variants", 
-    bins=[0, 1], 
-    bypass=(vi.pow2m1(WIDTH) < (10**DIGITS))
-)
-cg_extreme_values = CoverGroup(
-    "extreme inputs", 
-    bins=[0, vi.pow2m1(WIDTH)]
-)
-
-# --- Models -------------------------------------------------------------------
-
-# define the bus-functional-model
 class BcdEncoder:
 
     def __init__(self, width: int, digits: int):
-        self.go = Signal(mode=Mode.IN)
+        self.go = Signal(mode=Mode.IN, dist=[0.3, 0.7])
         self.bin = Signal(mode=Mode.IN, width=width)
 
         self.bcd = Signal(mode=Mode.OUT, width=(4*digits))
@@ -80,7 +48,7 @@ class BcdEncoder:
     def evaluate(self):
         # separate each digit
         digits = []
-        word = self.bin.as_int()
+        word = self.bin.to_int()
         while word >= 10:
             digits.insert(0, (word % 10))
             word = int(word/10)
@@ -98,9 +66,6 @@ class BcdEncoder:
             for _i in range(diff):
                 digits.insert(0, 0)
             pass
-        
-        cg_overflow.cover(self.ovfl.as_int())
-        cp_overflow_en.cover(self.ovfl.as_int() == 1)
 
         # write each digit to output file
         bin_digits: str = ''
@@ -113,10 +78,54 @@ class BcdEncoder:
 
     pass
 
+model = BcdEncoder(width=WIDTH, digits=DIGITS)
+fake_model = BcdEncoder(width=WIDTH, digits=DIGITS)
 
-# --- Logic --------------------------------------------------------------------
+# Coverage Goals - specify coverage areas
 
-random.seed(R_SEED)
+cp_go_while_active = CoverPoint(
+    "go while active", 
+    goal=100,
+    mapping=lambda x: int(x) == 1,
+    observe=fake_model.go,
+)
+
+cp_overflow_en = CoverPoint(
+    "overflow enabled", 
+    goal=50, 
+    bypass=model.bin.max() < (10**DIGITS),
+    mapping=lambda x: int(x) == 1,
+    observe=model.ovfl,
+)
+
+cp_bin_while_active = CoverPoint(
+    "input changes while active", 
+    goal=100
+)
+
+cg_unique_inputs = CoverGroup(
+    "binary value variants", 
+    bins=[i for i in model.bin.get_range()],
+    observe=model.bin,
+)
+
+cg_overflow = CoverGroup(
+    "overflow variants", 
+    bins=[0, 1], 
+    bypass=model.bin.max() < (10**DIGITS),
+    observe=model.ovfl,
+)
+
+cg_extreme_values = CoverGroup(
+    "extreme inputs", 
+    bins=[model.bin.min(), model.bin.max()],
+    observe=model.bin
+)
+
+
+# Generate the test vectors
+
+random.seed(RNG_SEED)
 
 # create empty test vector files
 inputs = TraceFile('inputs.trace', Mode.IN).open()
@@ -128,33 +137,26 @@ inputs.append(BcdEncoder(WIDTH, DIGITS))
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    txn = BcdEncoder(
-        width=WIDTH,
-        digits=DIGITS
-    )
-    txn.go.set(1)
-    txn.bin.rand()
+    vi.randomize(model)
+    model.go.set(1)
 
     # prioritize reaching coverage for all possible inputs first
     if cg_unique_inputs.passed() == False:
-        txn.bin.set(cg_unique_inputs.next(rand=True))
-
-    # record the input if its unique and not been tried before
-    cg_extreme_values.cover(txn.bin.as_int())
-    cg_unique_inputs.cover(txn.bin.as_int())
+        model.bin.set(cg_unique_inputs.next(rand=True))
 
     # write each transaction to the input file
-    inputs.append(txn)
+    inputs.append(model)
 
     # alter the input while the computation is running
     for _ in range(1, FSM_DELAY):
-        bad = vi.randomize(BcdEncoder(WIDTH, DIGITS))
-        cp_bin_while_active.cover(bad.bin.as_int() != txn.bin.as_int())
-        cp_go_while_active.cover(bad.go.as_int() == 1)
-        inputs.append(bad)
+        vi.randomize(fake_model)
+        cp_bin_while_active.cover(fake_model.bin.to_int() != model.bin.to_int())
+        inputs.append(fake_model)
 
     # compute expected values to send to simulation
-    outputs.append(txn.evaluate())
+    model.evaluate()
+    # write expected outputs for the input transaction
+    outputs.append(model)
     pass
 
 inputs.close()

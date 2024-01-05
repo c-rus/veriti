@@ -35,20 +35,22 @@ class Mode(_Enum):
 
 
 class Strategy(_Enum):
-    NORMAL = 0,
+    NONE = 0,
+    LINEAR = 1,
 
     @staticmethod
     def from_str(s: str):
         s = s.lower()
-        if s == 'normal':
-            return Strategy.NORMAL
+        if s == 'none':
+            return Strategy.NONE
+        elif s == 'linear':
+            return Strategy.LINEAR
         else:
             raise Exception('Failed to convert str '+s+' to type Strategy')
     pass
 
 
 class Distribution:
-    import random as _random
 
     def __init__(self, space, weights=None, partition: bool=True):
         '''
@@ -126,6 +128,7 @@ class Signal:
         '''
 
         self._mode = mode if isinstance(mode, str) == False else Mode.from_str(mode)
+        self._inferred_mode = None
 
         self._width = width if width != None else 1
         if self._width <= 0:
@@ -147,7 +150,7 @@ class Signal:
         # provide explicit distribution of values for sampling
         self._dist = dist
         if type(self._dist) == list:
-            self._dist = Distribution(space=[*range(self.min(), self.max())], weights=dist, partition=True)
+            self._dist = Distribution(space=[*self.get_range()], weights=dist, partition=True)
             pass
         pass
 
@@ -163,7 +166,7 @@ class Signal:
         '''
         Returns the type of port the signal is.
         '''
-        return self._mode
+        return self._mode if self._inferred_mode == None else self._inferred_mode
     
 
     def get_range(self) -> range:
@@ -191,7 +194,7 @@ class Signal:
         return 0
     
 
-    def rand(self):
+    def randomize(self):
         '''
         Sets the data to a random value based on its distribution.
 
@@ -206,24 +209,33 @@ class Signal:
         # ensure the selected data is allowed and in bounds
         if self._value < self.min() or self._value > self.max():
             raise Exception("Value out of bounds")
+        
         return self
     
 
-    def as_int(self) -> int:
+    def to_int(self, signed: bool=False) -> int:
         '''
         Accesses the inner data value stored as an integer.
+
+        If `signed` is set to True, then it will return the 2's complement
+        representation.
         '''
+        if signed == True:
+            # convert to bits
+            bits = to_logic(self._value, self._width, big_endian=True)
+            num = from_logic(bits, signed=True)
+            return num
         return self._value
     
 
-    def as_logic(self) -> str:
+    def to_logic(self) -> str:
         '''
         Casts the data into a series of 1's and 0's in a string. 
         
         If the signal is 'big-endian', then the MSB is first in the sequence. 
         Otherwise, the LSB is first in the sequence.
         '''
-        return to_logic(self.as_int(), self.get_width(), big_endian=self._big_endian)
+        return to_logic(self.to_int(), self.get_width(), big_endian=self._big_endian)
     
 
     def set(self, num, is_signed=False):
@@ -278,24 +290,10 @@ class Signal:
         to left.
         '''
         return self[index]
-        
-
-    def __eq__(self, other):
-        if isinstance(other, Signal):
-            return self.__key() == other.__key()
-        return NotImplemented
-    
-
-    def __key(self):
-        return (self._width, self._value)
-
-
-    def __hash__(self):
-        return hash(self.__key())
 
 
     def __getitem__(self, key: int) -> str:
-        vec = self.as_logic()
+        vec = self.to_logic()
         # reverse to count from 0 to width-1
         if self._big_endian == True:
             vec = vec[::-1]
@@ -304,7 +302,7 @@ class Signal:
 
     def __setitem__(self, key: int, value: str):
         new_val: str = '1' if int(value) == 1 else '0'
-        vec = self.as_logic()
+        vec = self.to_logic()
         # reverse to count from 0 to width-1
         if self._big_endian == True:
             vec = vec[::-1]
@@ -323,11 +321,11 @@ class Signal:
 
 
     def __str__(self):
-        return self.as_logic()
+        return self.to_logic()
     
 
     def __int__(self):
-        return self.as_int()
+        return self.to_int()
     
     pass
 
@@ -368,7 +366,8 @@ def get_ports(model, mode: Mode):
     sig: Signal
     index: int
     for (key, (sig, index)) in __compile_ports(model).items():
-        use_mode = Mode.from_str(config.Config().get_port(index)['mode']) if sig.get_mode() == Mode.INFER else sig.get_mode()
+        use_mode = Mode.from_str(config.Config().get_port(index)['mode']) if sig._mode == Mode.INFER else sig._mode
+        sig._inferred_mode = use_mode
         if use_mode != mode:
             continue
         results += [(index, key, sig)]
@@ -380,7 +379,7 @@ def get_ports(model, mode: Mode):
     return results
 
 
-def randomize(model, strategy: str=None):
+def randomize(model, strategy: str='none'):
     '''
     Generates random input values for each attribute for the BFM. This is
     a convenience function for individually setting each signal randomly.
@@ -390,11 +389,20 @@ def randomize(model, strategy: str=None):
     A strategy can be provided to provide coverage-driven input test vectors.
     '''
     sig: Signal
+    strat: Strategy = Strategy.from_str(strategy)
     for (_, sig) in get_ports(model, mode=Mode.IN):
-        sig.rand()
+        # use default provided distributions for each signal
+        if strat == Strategy.NONE:
+            sig.randomize()
+        # go down list of each coverage net and draw a next value to help close coverage
+        elif strat == Strategy.LINEAR:
+            # only work with coverage nets that deal with this model
+            pass
         pass
     return model
 
+
+# Unit Tests
 
 import unittest as _ut
 
@@ -439,18 +447,18 @@ class __Test(_ut.TestCase):
         # self.assertEqual(1, 0)
         pass
 
-    def test_as_logic(self):
+    def test_to_logic(self):
         s = Signal(width=4, value="1000", endianness='big')
-        self.assertEqual(s.as_logic(), "1000")
+        self.assertEqual(s.to_logic(), "1000")
 
         s = Signal(width=4, value=2, endianness='big')
-        self.assertEqual(s.as_logic(), "0010")
+        self.assertEqual(s.to_logic(), "0010")
 
         s = Signal(width=4, value="1000", endianness='little')
-        self.assertEqual(s.as_logic(), "1000")
+        self.assertEqual(s.to_logic(), "1000")
 
         s = Signal(width=4, value=2, endianness='little')
-        self.assertEqual(s.as_logic(), "0100")
+        self.assertEqual(s.to_logic(), "0100")
         pass
 
     def test_index_bit(self):
@@ -472,24 +480,24 @@ class __Test(_ut.TestCase):
         s = Signal(width=4, value="0000", endianness='big')
         s[3] = '1'
         self.assertEqual(s[3], '1')
-        self.assertEqual(s.as_logic(), "1000")
-        self.assertEqual(s.as_int(), 8)
+        self.assertEqual(s.to_logic(), "1000")
+        self.assertEqual(s.to_int(), 8)
 
         s = Signal(width=4, value=0, endianness='big')
         s[1] = '1'
-        self.assertEqual(s.as_logic(), "0010")
-        self.assertEqual(s.as_int(), 2)
+        self.assertEqual(s.to_logic(), "0010")
+        self.assertEqual(s.to_int(), 2)
 
         s = Signal(width=4, value="0000", endianness='little')
         s[3] = '1'
         self.assertEqual(s[3], '1')
-        self.assertEqual(s.as_logic(), "0001")
-        self.assertEqual(s.as_int(), 8)
+        self.assertEqual(s.to_logic(), "0001")
+        self.assertEqual(s.to_int(), 8)
 
         s = Signal(width=4, value=0, endianness='little')
         s[1] = '1'
-        self.assertEqual(s.as_logic(), "0100")
-        self.assertEqual(s.as_int(), 2)
+        self.assertEqual(s.to_logic(), "0100")
+        self.assertEqual(s.to_int(), 2)
         pass
 
     def test_bit_access(self):
@@ -514,11 +522,11 @@ class __Test(_ut.TestCase):
     def test_set_bit(self):
         s = Signal(width=4, value="0000")
         s.set_bit(0, '1')
-        self.assertEqual('0', s.as_logic()[0])
-        self.assertEqual('1', s.as_logic()[3])
+        self.assertEqual('0', s.to_logic()[0])
+        self.assertEqual('1', s.to_logic()[3])
         s.set_bit(3, '1')
-        self.assertEqual('1', s.as_logic()[3])
-        self.assertEqual('1', s.as_logic()[0])
+        self.assertEqual('1', s.to_logic()[3])
+        self.assertEqual('1', s.to_logic()[0])
 
         s = Signal(width=4, value="0000", endianness='big')
         s.set_bit(0, '1')
@@ -545,5 +553,19 @@ class __Test(_ut.TestCase):
         s = Signal(width=5, value="11110")
         self.assertEqual('0', s.get_bit(0))
         self.assertEqual('1', s.get_bit(4))
+        pass
+
+    def test_to_int_signed(self):
+        s = Signal(width=3, value=7)
+        self.assertEqual(s.to_int(signed=True), -1)
+
+        s = Signal(width=3, value=1)
+        self.assertEqual(s.to_int(signed=True), 1)
+
+        s = Signal(width=3, value=3)
+        self.assertEqual(s.to_int(signed=True), 3)
+
+        s = Signal(width=4, value=8, endianness='little')
+        self.assertEqual(s.to_int(signed=True), -8)
         pass
     pass

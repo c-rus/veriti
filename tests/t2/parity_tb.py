@@ -32,7 +32,7 @@ class Parity:
     def evaluate(self):
         self.check_bit.set(0)
         # cast into a `List[int]` type
-        vec = [int(x) for x in self.data.as_logic()]
+        vec = [int(x) for x in self.data.to_logic()]
         if hamming.set_parity_bit(vec, use_even=self._even_parity) == True:
             self.check_bit.set(1)
         return self

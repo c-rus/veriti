@@ -95,7 +95,6 @@ class TraceFile:
 
         # ignore the name when collecting the ports for the given mode
         ports = [p[1] for p in get_ports(model, mode=self._mode)]
-
         # check if there are coverages to automatically update
         for net in CoverageNet._group:
             if net.is_observing() == True:
@@ -105,6 +104,7 @@ class TraceFile:
                     # exit early if a signal being observed is not this transaction
                     if signal not in ports:
                         break
+                    pass
                 # perform an observation if the signals are in this transaction
                 else:
                     net.cover(net.get_observation())
@@ -117,7 +117,7 @@ class TraceFile:
         fd = self._file if open_in_scope == False else open(self._path, 'a')
         
         for port in ports:
-            fd.write(str(port.as_logic()) + DELIM)
+            fd.write(str(port.to_logic()) + DELIM)
         fd.write(NEWLINE)
         # close the file if it was opened in this current scope
         if open_in_scope == True:

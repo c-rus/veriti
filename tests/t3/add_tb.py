@@ -30,8 +30,8 @@ class Adder:
 
 
     def evaluate(self):
-        result = self.in0.as_int() + self.in1.as_int() + self.cin.as_int()
-        temp = Signal(width=self.in0.get_width()+1, value=result, endianness='big').as_logic()
+        result = self.in0.to_int() + self.in1.to_int() + self.cin.to_int()
+        temp = Signal(width=self.in0.get_width()+1, value=result, endianness='big').to_logic()
         # slice and dice
         self.sum.set(temp[1:])
         self.cout.set(temp[0])
@@ -142,7 +142,7 @@ while Coverage.all_passed(MAX_SIMS) == False:
     # generate random numbers that exceed sum vector
     elif cp_cout_gen.passed() == False:
         txn.in0.set(random.randint(1, txn.in0.max()))
-        txn.in1.set(pow2m1(WIDTH) + random.randint(1, WIDTH) - txn.in0.as_int())
+        txn.in1.set(txn.in1.max() + 1 - txn.in0.to_int())
     # provide an extreme value for in0
     elif cg_in0_extremes.passed() == False:
         txn.in0.set(random.choice([txn.in0.min(), txn.in0.max()]))
