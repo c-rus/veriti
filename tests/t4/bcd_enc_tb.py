@@ -83,19 +83,25 @@ fake_model = BcdEncoder(width=WIDTH, digits=DIGITS)
 
 # Coverage Goals - specify coverage areas
 
+cg_unique_inputs = CoverGroup(
+    "binary value variants", 
+    bins=[i for i in model.bin.get_range()],
+    interface=model.bin,
+)
+
 cp_go_while_active = CoverPoint(
     "go while active", 
     goal=100,
     mapping=lambda x: int(x) == 1,
-    observe=fake_model.go,
+    interface=fake_model.go,
 )
 
 cp_overflow_en = CoverPoint(
     "overflow enabled", 
-    goal=50, 
+    goal=10, 
     bypass=model.bin.max() < (10**DIGITS),
     mapping=lambda x: int(x) == 1,
-    observe=model.ovfl,
+    interface=model.ovfl,
 )
 
 cp_bin_while_active = CoverPoint(
@@ -103,23 +109,17 @@ cp_bin_while_active = CoverPoint(
     goal=100
 )
 
-cg_unique_inputs = CoverGroup(
-    "binary value variants", 
-    bins=[i for i in model.bin.get_range()],
-    observe=model.bin,
-)
-
 cg_overflow = CoverGroup(
     "overflow variants", 
     bins=[0, 1], 
     bypass=model.bin.max() < (10**DIGITS),
-    observe=model.ovfl,
+    interface=model.ovfl,
 )
 
 cg_extreme_values = CoverGroup(
     "extreme inputs", 
     bins=[model.bin.min(), model.bin.max()],
-    observe=model.bin
+    interface=model.bin
 )
 
 
@@ -137,12 +137,8 @@ inputs.append(BcdEncoder(WIDTH, DIGITS))
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    vi.randomize(model)
+    vi.randomize(model, strategy='linear')
     model.go.set(1)
-
-    # prioritize reaching coverage for all possible inputs first
-    if cg_unique_inputs.passed() == False:
-        model.bin.set(cg_unique_inputs.next(rand=True))
 
     # write each transaction to the input file
     inputs.append(model)

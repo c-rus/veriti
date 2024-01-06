@@ -48,21 +48,21 @@ cr_data = CoverRange(
     name='data full',
     span=model.data.get_range(),
     max_steps=16,
-    observe=model.data
+    interface=model.data
 )
 
 cp_check_bit_asserted = CoverPoint(
     name='check bit asserted',
     goal=20,
     mapping=lambda x: int(x) == 1,
-    observe=model.check_bit
+    interface=model.check_bit,
 )
 
 cp_check_bit_deasserted = CoverPoint(
     name='check bit de-asserted',
     goal=20,
     mapping=lambda x: int(x) == 0,
-    observe=model.check_bit
+    interface=model.check_bit,
 )
 
 # create empty test vector files
@@ -79,15 +79,15 @@ data_values = []
 # generate test cases until total coverage is met or we reached max count
 while Coverage.all_passed(MAX_SIMS) == False:
     # create a new input to enter through the algorithm
-    transaction = vi.randomize(model)
+    vi.randomize(model, strategy='linear')
 
-    data_values += [int(transaction.data)]
+    data_values += [int(model.data)]
 
-    inputs.append(transaction)
+    inputs.append(model)
 
-    transaction.evaluate()
+    model.evaluate()
 
-    outputs.append(transaction)
+    outputs.append(model)
     pass
 
 inputs.close()
