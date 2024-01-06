@@ -403,7 +403,7 @@ class CoverGroup(CoverageNet):
 
     group = []
 
-    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, observe: Signal=None, act: Signal=None, inverse=None):
+    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, inverse=None, interface: Signal=None, read_interface: Signal=None, write_interface: Signal=None):
         '''
         Initialize by expliciting defining the bins.
         '''
@@ -450,7 +450,11 @@ class CoverGroup(CoverageNet):
         self._total_count = 0
 
         self._inverse = inverse
-        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
+
+        read_interface = interface if read_interface == None else read_interface
+        write_interface = interface if write_interface == None else write_interface
+
+        super().__init__(name=name, bypass=bypass, observe=read_interface, act=write_interface)
         pass
 
 
@@ -643,7 +647,7 @@ class CoverRange(CoverageNet):
     '''
     from .model import Signal
 
-    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, observe: Signal=None, act: Signal=None):
+    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, interface: Signal=None, read_interface: Signal=None, write_interface: Signal=None):
         '''
         Initialize a CoverRange. 
         
@@ -684,7 +688,10 @@ class CoverRange(CoverageNet):
         # store the actual values when mapped items cover toward the goal
         self._mapped_items = dict()
 
-        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
+        read_interface = interface if read_interface == None else read_interface
+        write_interface = interface if write_interface == None else write_interface
+
+        super().__init__(name=name, bypass=bypass, observe=read_interface, act=write_interface)
         pass
 
 
@@ -846,7 +853,7 @@ class CoverPoint(CoverageNet):
     '''
     from .model import Signal
 
-    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, observe: Signal=None, act: Signal=None, inverse=None):
+    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, inverse=None, interface: Signal=None, read_interface: Signal=None, write_interface: Signal=None):
         '''
         Initialize a CoverPoint. 
         
@@ -862,7 +869,10 @@ class CoverPoint(CoverageNet):
         # define a custom function that should return a boolean to define the targeted point
         self._mapping = mapping
         self._inverse = inverse
-        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
+
+        read_interface = interface if read_interface == None else read_interface
+        write_interface = interface if write_interface == None else write_interface
+        super().__init__(name=name, bypass=bypass, observe=read_interface, act=write_interface)
         pass
 
 
