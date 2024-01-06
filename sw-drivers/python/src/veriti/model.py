@@ -388,17 +388,48 @@ def randomize(model, strategy: str='none'):
 
     A strategy can be provided to provide coverage-driven input test vectors.
     '''
-    sig: Signal
+    from .coverage import CoverageNet
+
+    net: CoverageNet
+    port: Signal
+
     strat: Strategy = Strategy.from_str(strategy)
-    for (_, sig) in get_ports(model, mode=Mode.IN):
-        # use default provided distributions for each signal
-        if strat == Strategy.NONE:
-            sig.randomize()
-        # go down list of each coverage net and draw a next value to help close coverage
-        elif strat == Strategy.LINEAR:
-            # only work with coverage nets that deal with this model
+
+    ports = [p[1] for p in get_ports(model, mode=Mode.IN)]
+
+    # always randomize all inputs no matter the strategy (default strategy)
+    for port in ports:
+        port.randomize()
+        pass
+
+    # use default provided distributions for each signal
+    if strat == Strategy.NONE:
+        pass
+    # go down list of each coverage net and draw a next value to help close coverage
+    elif strat == Strategy.LINEAR:
+        # only work with coverage nets that deal with this model
+        for net in CoverageNet._group:
+            # skip coverages that are already completed
+            if net.is_driven() == True and net.passed() == False:
+                actors = net.get_act_list()
+                # verify each writer exists in this current model
+                for act in actors:
+                    if act not in ports:
+                        break
+                else:
+                    # print('next coverage:', net._name)
+                    values = net.next(rand=True)
+                    # print(values)
+                    # force into an iterable type
+                    if type(values) == int:
+                        values = [values]
+                    for i in range(len(actors)):
+                        actors[i].set(values[i])
+                # exit- we only want to ensure we progress toward one coverage
+                break
             pass
         pass
+
     return model
 
 

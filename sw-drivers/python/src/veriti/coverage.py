@@ -189,10 +189,14 @@ class CoverageNet(_ABC):
     _group = []
     _counter = 0
 
-    def __init__(self, name: str, bypass: bool=False, observe: Signal=None):
+    def __init__(self, name: str, bypass: bool=False, observe: Signal=None, act: Signal=None):
         self._name = name
         self._bypass = bypass
+        # store the set of signals that must be read to check this coverage
         self._observe = observe
+        # store the set of signals that must be written to act for this coverage
+        self._actors = act # if act != None else observe
+
         CoverageNet._group += [self]
         pass
 
@@ -207,7 +211,7 @@ class CoverageNet(_ABC):
 
     def get_watch_list(self):
         '''
-        Returns a iterable object of the Signal objects that are being watched.
+        Returns an iterable object of the Signals that are to be read.
         '''
         from .model import Signal 
 
@@ -226,11 +230,47 @@ class CoverageNet(_ABC):
         return self._watch_list
     
 
+    def get_act_list(self):
+        '''
+        Returns an iterable object of the Signals that are to be written.
+        '''
+        from .model import Signal 
+
+        if hasattr(self, '_act_list') == True:
+            return self._act_list
+        
+        self._act_list = []
+        if self.is_driven() == True:
+            # transform single signal into a list
+            if type(self._actors) == Signal:
+                self._act_list = [self._actors]
+            else:
+                self._act_list = list(self._actors)
+            pass
+
+        return self._act_list
+    
+
+    def is_driven(self) -> bool:
+        '''
+        This function checks if there is a set of actors that exists for the given
+        net to write its next coverage action.
+        '''
+        return self._actors != None
+    
+
     def get_observation(self):
         '''
         Returns the object that is currently being observed for the CoverageNet.
         '''
         return self._observe
+    
+
+    def get_actors(self):
+        '''
+        Returns the object that is currently being written for the CoverageNet.
+        '''
+        return self._actors
 
 
     @_abstractmethod
@@ -269,6 +309,23 @@ class CoverageNet(_ABC):
 
     @_abstractmethod
     def cover(self, item) -> bool:
+        '''
+        This function accepts either a single object or an interable object that is
+        required to read to see if coverage proceeds toward its goal.
+
+        It can be thought of as the inverse function to `next(...)`.
+        '''
+        pass
+
+
+    @_abstractmethod
+    def next(self, rand=False):
+        '''
+        This function returns either a single object or an iterable object that is
+        required to be written to make the coverage proceed toward its goal.
+
+        It can be thought of as the inverse function to `cover(...)`.
+        '''
         pass
 
 
@@ -346,7 +403,7 @@ class CoverGroup(CoverageNet):
 
     group = []
 
-    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, observe: Signal=None):
+    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, observe: Signal=None, act: Signal=None, inverse=None):
         '''
         Initialize by expliciting defining the bins.
         '''
@@ -391,7 +448,9 @@ class CoverGroup(CoverageNet):
         self._goal = goal
         # initialize the total count of all covers
         self._total_count = 0
-        super().__init__(name=name, bypass=bypass, observe=observe)
+
+        self._inverse = inverse
+        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
         pass
 
 
@@ -476,8 +535,12 @@ class CoverGroup(CoverageNet):
         import random as _random
 
         # can only map 1-way (as of now)
-        if self._map != None:
+        if self._map != None and self._inverse == None:
             raise Exception("Cannot map back to original values")
+
+        if self._inverse != None:
+            raise Exception("Implement inverse mapping")
+        
         available = []
         # filter out the elements who have not yet met the goal
         for i, count in enumerate(self._macro_bins_count):
@@ -580,7 +643,7 @@ class CoverRange(CoverageNet):
     '''
     from .model import Signal
 
-    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, observe: Signal=None):
+    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, observe: Signal=None, act: Signal=None):
         '''
         Initialize a CoverRange. 
         
@@ -621,7 +684,7 @@ class CoverRange(CoverageNet):
         # store the actual values when mapped items cover toward the goal
         self._mapped_items = dict()
 
-        super().__init__(name=name, bypass=bypass, observe=observe)
+        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
         pass
 
 
@@ -783,7 +846,7 @@ class CoverPoint(CoverageNet):
     '''
     from .model import Signal
 
-    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, observe: Signal=None):
+    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, observe: Signal=None, act: Signal=None, inverse=None):
         '''
         Initialize a CoverPoint. 
         
@@ -798,7 +861,8 @@ class CoverPoint(CoverageNet):
         self._goal = goal
         # define a custom function that should return a boolean to define the targeted point
         self._mapping = mapping
-        super().__init__(name=name, bypass=bypass, observe=observe)
+        self._inverse = inverse
+        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
         pass
 
 
@@ -843,6 +907,10 @@ class CoverPoint(CoverageNet):
         if cond == True:
             self._count += 1
         return cond
+    
+
+    def next(self, rand=False):
+        return int(True) if self._inverse == None else self._inverse(self._actors)
 
 
     def passed(self):
@@ -891,11 +959,18 @@ class CoverCross(CoverageNet):
                 break
             observe += [net.get_observation()]
             pass
+        act = []
+        for net in self._nets:
+            if net.get_actors() == None:
+                act = None
+                break
+            act += [net.get_actors()]
+            pass
 
         # remove that entry and use this instance
         self._group.pop()
         # overwrite the entry with this instance in the class-wide data structure
-        super().__init__(name=name, bypass=bypass, observe=observe)
+        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
         pass
     
     
@@ -910,6 +985,37 @@ class CoverCross(CoverageNet):
             self._watch_list += net.get_watch_list()
 
         return self._watch_list
+
+
+    def get_act_list(self):
+        if hasattr(self, "_act_list") == True:
+            return self._act_list
+        
+        self._act_list = []
+        
+        net: CoverageNet
+        for net in self._nets:
+            self._act_list += net.get_act_list()
+
+        return self._act_list
+
+
+    def next(self, rand=False):
+        index = self._inner.next(rand)
+        # convert the 1-dimensional value into its n-dimensional value
+        item = self._pack(index)
+        # print(index, '->', item)
+
+        i = self._flatten(item)
+        # print(item, '->', i)
+
+        # expand to the entire parition space for each element
+        for i, net in enumerate(self._nets):
+            item[i] *= net.get_range().step
+
+        # print(index, '->', item)
+        # exit('implement!')
+        return item
 
 
     def get_range(self) -> range:
@@ -932,6 +1038,44 @@ class CoverCross(CoverageNet):
         Returns the number of elements are involved in the cartesian cross product.
         '''
         return self._crosses
+    
+
+    def _pack(self, index):
+        '''
+        Packs a 1-dimensional index into a N-dimensional item.
+        '''
+        # initialize the set of values to store in the item
+        item = [0] * self.get_cross_count()
+
+        subgroup_sizes = [1] * self.get_cross_count()
+
+        for i in range(self.get_cross_count()):
+            subgroup_sizes[i] = self._nets[i].get_partition_count()
+            for j in range(i+1, self.get_cross_count()):
+                subgroup_sizes[i] *= self._nets[i].get_partition_count()
+            pass
+
+        subgroup_sizes = subgroup_sizes[::-1]
+        # print(subgroup_sizes)
+        # perform counting sequence and perform propery overflow/handling of the carry
+        for i in range(0, index):
+            item[0] += 1
+            carry = True
+            if item[0] >= subgroup_sizes[0]:
+                item[0] = 0
+            else:
+                carry = False
+            j = 1
+            while carry == True and j < self.get_cross_count():
+                item[j] += 1
+                if item[j] >= subgroup_sizes[j]:
+                    item[j] = 0
+                else:
+                    carry = False
+                j += 1
+                pass
+
+        return item
     
 
     def _flatten(self, item):
