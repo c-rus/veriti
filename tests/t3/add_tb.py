@@ -140,6 +140,10 @@ while Coverage.all_passed(MAX_SIMS) == False:
 
     # Create a new input to enter through the algorithm and
     # use coverage-driven test generation (CDTG) using linear priorities.
+    
+    # When specifying CDTG ('linear'), it provides a 7x reduction in tests 
+    # required to meet coverage as compared to truly random ('none').
+    # It reduces 2010 tests to 288 to achieve the same coverage.
     txn = randomize(model, strategy='linear')
 
     # write each incoming transaction to the DUT
