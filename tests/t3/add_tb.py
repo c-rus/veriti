@@ -50,7 +50,7 @@ cg_in0_full = CoverRange(
     span=model.in0.get_range(),
     goal=1,
     max_steps=16,
-    interface=model.in0,
+    target=model.in0,
 )
 
 # Cover the entire range for in1 into at most 16 bins and make sure 
@@ -60,7 +60,7 @@ cg_in1_full = CoverRange(
     span=model.in1.get_range(),
     goal=1,
     max_steps=16,
-    interface=model.in1,
+    target=model.in1,
 )
 
 # Cover the case that cin is asserted at least 100 times.
@@ -68,7 +68,7 @@ cp_cin_asserted = CoverPoint(
     "cin asserted",
     goal=100,
     mapping=lambda x: int(x) == 1,
-    interface=model.cin,
+    target=model.cin,
 )
 
 # Cover the extreme edge cases for in0 (min and max) at least 10 times.
@@ -76,7 +76,7 @@ cg_in0_extremes = CoverGroup(
     "in0 extremes",
     bins=[model.in0.min(), model.in0.max()],
     goal=10,
-    interface=model.in0,
+    target=model.in0,
 )
 
 # Cover the extreme edge cases for in1 (min and max) at least 10 times.
@@ -84,7 +84,7 @@ cg_in1_extremes = CoverGroup(
     "in1 extremes",
     bins=[model.in1.min(), model.in1.max()],
     goal=10,
-    interface=model.in1,
+    target=model.in1,
 )
 
 # Make sure all combinations of input bins are tested at least once. It is possible
@@ -100,7 +100,7 @@ cp_in0_in1_eq_0    = CoverPoint(
     goal=1,
     mapping=lambda p: int(p[0]) == 0 and int(p[1]) == 0,
     inverse=lambda p: (p[0].min(), p[1].min()),
-    interface=(model.in0, model.in1),
+    target=(model.in0, model.in1),
 )
 
 # Check to make sure both inputs are the maximum value at the same time at least once.
@@ -109,7 +109,7 @@ cp_in0_in1_eq_max  = CoverPoint(
     goal=1,
     mapping=lambda p: int(p[0]) == p[0].max() and int(p[1]) == p[1].max(),
     inverse=lambda p: (p[0].max(), p[1].max()),
-    interface=(model.in0, model.in1),
+    target=(model.in0, model.in1),
 )
 
 def fn_cp_cout_gen(p):
@@ -122,8 +122,8 @@ cp_cout_gen = CoverPoint(
     goal=10,
     mapping=lambda x: int(x) == 1,
     inverse=fn_cp_cout_gen,
-    read_interface=model.cout,
-    write_interface=(model.in0, model.in1),
+    source=(model.in0, model.in1),
+    sink=model.cout,
 )
 
 # Prepare the traces for simulation

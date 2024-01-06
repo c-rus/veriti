@@ -88,7 +88,7 @@ class TraceFile:
         argument list. A newline is formed after all arguments
         '''
         from .model import Signal, get_ports
-        from .coverage import CoverageNet
+        from .coverage import CoverageNet, Coverage
 
         port: Signal
         net: CoverageNet
@@ -96,18 +96,18 @@ class TraceFile:
         # ignore the name when collecting the ports for the given mode
         ports = [p[1] for p in get_ports(model, mode=self._mode)]
         # check if there are coverages to automatically update
-        for net in CoverageNet._group:
-            if net.is_observing() == True:
+        for net in Coverage.get_nets():
+            if net.has_sink() == True:
                 # verify the observation involves only signals being written for this transaction
-                subspace = net.get_watch_list()
-                for signal in subspace:
+                sinks = net.get_sink_list()
+                for sink in sinks:
                     # exit early if a signal being observed is not this transaction
-                    if signal not in ports:
+                    if sink not in ports:
                         break
                     pass
                 # perform an observation if the signals are in this transaction
                 else:
-                    net.cover(net.get_observation())
+                    net.cover(net.get_sink())
             pass
 
         DELIM = ','

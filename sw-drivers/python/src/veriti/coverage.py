@@ -58,6 +58,31 @@ class Coverage:
 
 
     @staticmethod
+    def get_nets():
+        '''
+        Returns the list of all coverage nets being tracked.
+        '''
+        return CoverageNet._group
+    
+
+    @staticmethod
+    def get_failing_nets():
+        '''
+        Returns a list of coverage nets that have not met their coverage goal.
+
+        This function excludes coverage nets that are bypassed.
+        '''
+        net: CoverageNet
+        result = []
+        for net in CoverageNet._group:
+            # only append nets that are not bypassed and are not completed
+            if net.skipped() == False and net.passed() == False:
+                result += [net]
+            pass
+        return result
+
+
+    @staticmethod
     def report(verbose: bool=True) -> str:
         '''
         Compiles a report of the coverage statistics and details. Setting `verbose`
@@ -189,88 +214,102 @@ class CoverageNet(_ABC):
     _group = []
     _counter = 0
 
-    def __init__(self, name: str, bypass: bool=False, observe: Signal=None, act: Signal=None):
+    def __init__(self, name: str, bypass: bool=False, target: Signal=None, source: Signal=None, sink: Signal=None):
+        '''
+        Initializes a CoverageNet object.
+
+        If a `target` is defined and either a `source` or `sink` is undefined, then the net assumes the
+        `target` is also the undefined `source` and/or undefined `sink`.
+
+        ### Parameters
+        - `name`: the user-friendly name for the net
+        - `bypass`: skips the net when true
+        - `target`: the signal(s) involved in advancing and checking the coverage
+        - `source`: the signal(s) involved in advancing the coverage
+        - `sink`: the signal(s) involved in checking the coverage
+        '''
         self._name = name
         self._bypass = bypass
-        # store the set of signals that must be read to check this coverage
-        self._observe = observe
-        # store the set of signals that must be written to act for this coverage
-        self._actors = act # if act != None else observe
 
+        # remember the signal(s) that are written to advance coverage
+        self._source = target if source == None else source
+        # remember the signal(s) that are read to check coverage
+        self._sink = target if sink == None else sink
+    
         CoverageNet._group += [self]
         pass
 
     
-    def is_observing(self) -> bool:
+    def has_sink(self) -> bool:
         '''
-        Checks if the CoverageNet is set up to watch a particular set of inputs
-        to automatically update coverages.
+        Checks if the net is configured with a set of signal(s) to read from
+        to check coverage.
         '''
-        return self._observe != None
+        return self._sink != None
     
 
-    def get_watch_list(self):
+    def has_source(self) -> bool:
         '''
-        Returns an iterable object of the Signals that are to be read.
+        Checks if the net is configured with a set of signal(s) to write to
+        to advance coverage.
+        '''
+        return self._source != None
+    
+
+    def get_sink_list(self):
+        '''
+        Returns an iterable object of the signals to be read for checking coverage.
         '''
         from .model import Signal 
 
-        if hasattr(self, '_watch_list') == True:
-            return self._watch_list
+        if hasattr(self, '_sink_list') == True:
+            return self._sink_list
         
-        self._watch_list = []
-        if self.is_observing() == True:
+        self._sink_list = []
+        if self.has_sink() == True:
             # transform single signal into a list
-            if type(self._observe) == Signal:
-                self._watch_list = [self._observe]
+            if type(self._sink) == Signal:
+                self._sink_list = [self._sink]
             else:
-                self._watch_list = list(self._observe)
+                self._sink_list = list(self._sink)
             pass
 
-        return self._watch_list
-    
+        return self._sink_list
 
-    def get_act_list(self):
+
+    def get_source_list(self):
         '''
-        Returns an iterable object of the Signals that are to be written.
+        Returns an iterable object of the signals to be written for advancing coverage.
         '''
         from .model import Signal 
 
-        if hasattr(self, '_act_list') == True:
-            return self._act_list
+        if hasattr(self, '_source_list') == True:
+            return self._source_list
         
-        self._act_list = []
-        if self.is_driven() == True:
+        self._source_list = []
+        if self.has_source() == True:
             # transform single signal into a list
-            if type(self._actors) == Signal:
-                self._act_list = [self._actors]
+            if type(self._source) == Signal:
+                self._source_list = [self._source]
             else:
-                self._act_list = list(self._actors)
+                self._source_list = list(self._source)
             pass
 
-        return self._act_list
+        return self._source_list
     
 
-    def is_driven(self) -> bool:
+    def get_sink(self):
         '''
-        This function checks if there is a set of actors that exists for the given
-        net to write its next coverage action.
+        Returns the object that has reading permissions to check coverage.
         '''
-        return self._actors != None
+        return self._sink
     
 
-    def get_observation(self):
+    def get_source(self):
         '''
-        Returns the object that is currently being observed for the CoverageNet.
+        Returns the object that has writing permissions to advance coverage.
         '''
-        return self._observe
-    
-
-    def get_actors(self):
-        '''
-        Returns the object that is currently being written for the CoverageNet.
-        '''
-        return self._actors
+        return self._source
 
 
     @_abstractmethod
@@ -403,7 +442,7 @@ class CoverGroup(CoverageNet):
 
     group = []
 
-    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, inverse=None, interface: Signal=None, read_interface: Signal=None, write_interface: Signal=None):
+    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, inverse=None, target: Signal=None, source: Signal=None, sink: Signal=None):
         '''
         Initialize by expliciting defining the bins.
         '''
@@ -451,10 +490,7 @@ class CoverGroup(CoverageNet):
 
         self._inverse = inverse
 
-        read_interface = interface if read_interface == None else read_interface
-        write_interface = interface if write_interface == None else write_interface
-
-        super().__init__(name=name, bypass=bypass, observe=read_interface, act=write_interface)
+        super().__init__(name=name, bypass=bypass, target=target, source=source, sink=sink)
         pass
 
 
@@ -647,7 +683,7 @@ class CoverRange(CoverageNet):
     '''
     from .model import Signal
 
-    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, interface: Signal=None, read_interface: Signal=None, write_interface: Signal=None):
+    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, target: Signal=None, source: Signal=None, sink: Signal=None):
         '''
         Initialize a CoverRange. 
         
@@ -688,10 +724,7 @@ class CoverRange(CoverageNet):
         # store the actual values when mapped items cover toward the goal
         self._mapped_items = dict()
 
-        read_interface = interface if read_interface == None else read_interface
-        write_interface = interface if write_interface == None else write_interface
-
-        super().__init__(name=name, bypass=bypass, observe=read_interface, act=write_interface)
+        super().__init__(name=name, bypass=bypass, target=target, source=source, sink=sink)
         pass
 
 
@@ -853,7 +886,7 @@ class CoverPoint(CoverageNet):
     '''
     from .model import Signal
 
-    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, inverse=None, interface: Signal=None, read_interface: Signal=None, write_interface: Signal=None):
+    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, inverse=None, target: Signal=None, source: Signal=None, sink: Signal=None):
         '''
         Initialize a CoverPoint. 
         
@@ -870,9 +903,7 @@ class CoverPoint(CoverageNet):
         self._mapping = mapping
         self._inverse = inverse
 
-        read_interface = interface if read_interface == None else read_interface
-        write_interface = interface if write_interface == None else write_interface
-        super().__init__(name=name, bypass=bypass, observe=read_interface, act=write_interface)
+        super().__init__(name=name, bypass=bypass, target=target, source=source, sink=sink)
         pass
 
 
@@ -961,53 +992,56 @@ class CoverCross(CoverageNet):
         )
 
         net: CoverageNet
-        observe = []
+
+        sink = []
         for net in self._nets:
-            # cannot auto-track coverage if at least one net is not observing
-            if net.get_observation() == None:
-                observe = None
+            # cannot auto-check coverage if a sink is not defined
+            if net.has_sink() == False:
+                sink = None
                 break
-            observe += [net.get_observation()]
+            sink += [net.get_sink()]
             pass
-        act = []
+
+        source = []
         for net in self._nets:
-            if net.get_actors() == None:
-                act = None
+            # cannot auto-advance coverage if a source is not defined
+            if net.has_source() == False:
+                source = None
                 break
-            act += [net.get_actors()]
+            source += [net.get_source()]
             pass
 
         # remove that entry and use this instance
         self._group.pop()
         # overwrite the entry with this instance in the class-wide data structure
-        super().__init__(name=name, bypass=bypass, observe=observe, act=act)
+        super().__init__(name=name, bypass=bypass, source=source, sink=sink, target=None)
         pass
     
     
-    def get_watch_list(self):
-        if hasattr(self, "_watch_list") == True:
-            return self._watch_list
+    def get_sink_list(self):
+        if hasattr(self, "_sink_list") == True:
+            return self._sink_list
         
-        self._watch_list = []
-        
-        net: CoverageNet
-        for net in self._nets:
-            self._watch_list += net.get_watch_list()
-
-        return self._watch_list
-
-
-    def get_act_list(self):
-        if hasattr(self, "_act_list") == True:
-            return self._act_list
-        
-        self._act_list = []
+        self._sink_list = []
         
         net: CoverageNet
         for net in self._nets:
-            self._act_list += net.get_act_list()
+            self._sink_list += net.get_sink_list()
 
-        return self._act_list
+        return self._sink_list
+
+
+    def get_source_list(self):
+        if hasattr(self, "_source_list") == True:
+            return self._source_list
+        
+        self._source_list = []
+        
+        net: CoverageNet
+        for net in self._nets:
+            self._source_list += net.get_source_list()
+
+        return self._source_list
 
 
     def next(self, rand=False):

@@ -86,14 +86,14 @@ fake_model = BcdEncoder(width=WIDTH, digits=DIGITS)
 cg_unique_inputs = CoverGroup(
     "binary value variants", 
     bins=[i for i in model.bin.get_range()],
-    interface=model.bin,
+    target=model.bin,
 )
 
 cp_go_while_active = CoverPoint(
     "go while active", 
     goal=100,
     mapping=lambda x: int(x) == 1,
-    interface=fake_model.go,
+    target=fake_model.go,
 )
 
 cp_overflow_en = CoverPoint(
@@ -101,7 +101,7 @@ cp_overflow_en = CoverPoint(
     goal=10, 
     bypass=model.bin.max() < (10**DIGITS),
     mapping=lambda x: int(x) == 1,
-    interface=model.ovfl,
+    target=model.ovfl,
 )
 
 cp_bin_while_active = CoverPoint(
@@ -113,13 +113,13 @@ cg_overflow = CoverGroup(
     "overflow variants", 
     bins=[0, 1], 
     bypass=model.bin.max() < (10**DIGITS),
-    interface=model.ovfl,
+    target=model.ovfl,
 )
 
 cg_extreme_values = CoverGroup(
     "extreme inputs", 
     bins=[model.bin.min(), model.bin.max()],
-    interface=model.bin
+    target=model.bin
 )
 
 

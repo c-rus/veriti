@@ -388,7 +388,7 @@ def randomize(model, strategy: str='none'):
 
     A strategy can be provided to provide coverage-driven input test vectors.
     '''
-    from .coverage import CoverageNet
+    from .coverage import CoverageNet, Coverage
 
     net: CoverageNet
     port: Signal
@@ -407,24 +407,24 @@ def randomize(model, strategy: str='none'):
         pass
     # go down list of each coverage net and draw a next value to help close coverage
     elif strat == Strategy.LINEAR:
+        # collect the set of nets
+        failing_nets = Coverage.get_failing_nets()
         # only work with coverage nets that deal with this model
-        for net in CoverageNet._group:
-            # skip coverages that are already completed
-            if net.is_driven() == True and net.passed() == False:
-                actors = net.get_act_list()
+        for net in failing_nets:
+            # only work on coverage nets that are allowed to be auto-written
+            if net.has_source() == True:
+                sources = net.get_source_list()
                 # verify each writer exists in this current model
-                for act in actors:
-                    if act not in ports:
+                for source in sources:
+                    if source not in ports:
                         break
                 else:
-                    # print('next coverage:', net._name)
                     values = net.next(rand=True)
-                    # print(values)
                     # force into an iterable type
                     if type(values) == int:
                         values = [values]
-                    for i in range(len(actors)):
-                        actors[i].set(values[i])
+                    for i in range(len(sources)):
+                        sources[i].set(values[i])
                 # exit- we only want to ensure we progress toward one coverage
                 break
             pass

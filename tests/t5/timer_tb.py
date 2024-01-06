@@ -47,18 +47,18 @@ model = Timer()
 # verify each tick is enabled at least 3 times
 for i, tick in enumerate(SUB_DELAYS):
     CoverPoint(
-        name='tick '+str(tick)+' triggered',
+        name='tick '+str(tick)+' targeted',
         goal=3,
         # capture `i` by value not by reference
         mapping=lambda x, i=i: int(x[i]) == 1,
-        read_interface=model.sub_ticks
+        sink=model.sub_ticks
     )
 
 # verify the common delay is enabled
 cp_base = CoverPoint(
-    name="base tick triggered", 
+    name="base tick targeted", 
     goal=3,
-    read_interface=model.base_tick
+    sink=model.base_tick
 )
 
 # set the randomness seed

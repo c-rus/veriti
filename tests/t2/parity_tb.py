@@ -48,21 +48,21 @@ cr_data = CoverRange(
     name='data full',
     span=model.data.get_range(),
     max_steps=16,
-    interface=model.data
+    target=model.data
 )
 
 cp_check_bit_asserted = CoverPoint(
     name='check bit asserted',
     goal=20,
     mapping=lambda x: int(x) == 1,
-    interface=model.check_bit,
+    target=model.check_bit,
 )
 
 cp_check_bit_deasserted = CoverPoint(
     name='check bit de-asserted',
     goal=20,
     mapping=lambda x: int(x) == 0,
-    interface=model.check_bit,
+    target=model.check_bit,
 )
 
 # create empty test vector files
