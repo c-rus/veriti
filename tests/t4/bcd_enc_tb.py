@@ -1,13 +1,10 @@
-# Project  : bcd-encoder
-# Engineer : Chase Ruskin
-# Created  : 2021/10/17
-# Details  :
-#   This script generates the I/O test vector files to be used with the 
-#   bcd_enc_tb.vhd testbench. Generic values for `DIGITS`` and `LEN` can be 
-#   passed through the command-line. 
+# Project: veriti
+# Script: bcd_enc_tb.py
 #
-#   Generates a coverage report as well to indicate the robust of the test.
-#
+# This script generates the I/O test vector files to be used with the 
+# bcd_enc_tb.vhd testbench. It also produces a coverage report to indicate the 
+# robust of the tests.
+
 import random
 import veriti as vi
 from veriti.trace import TraceFile
@@ -92,16 +89,16 @@ cg_unique_inputs = CoverGroup(
 cp_go_while_active = CoverPoint(
     "go while active", 
     goal=100,
-    mapping=lambda x: int(x) == 1,
     target=fake_model.go,
+    cover=lambda x: int(x) == 1,
 )
 
 cp_overflow_en = CoverPoint(
     "overflow enabled", 
     goal=10, 
     bypass=model.bin.max() < (10**DIGITS),
-    mapping=lambda x: int(x) == 1,
     target=model.ovfl,
+    cover=lambda x: int(x) == 1,
 )
 
 cp_bin_while_active = CoverPoint(
@@ -121,7 +118,6 @@ cg_extreme_values = CoverGroup(
     bins=[model.bin.min(), model.bin.max()],
     target=model.bin
 )
-
 
 # Generate the test vectors
 

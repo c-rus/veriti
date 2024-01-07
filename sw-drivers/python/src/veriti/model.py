@@ -419,7 +419,7 @@ def randomize(model, strategy: str='none'):
                     if source not in ports:
                         break
                 else:
-                    values = net.next(rand=True)
+                    values = net.advance(rand=True)
                     # force into an iterable type
                     if type(values) == int:
                         values = [values]

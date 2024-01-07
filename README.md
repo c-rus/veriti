@@ -10,6 +10,13 @@ Any hardware design can be translated behaviorally to software, and by writing t
 
 This framework attempts to decouple the functional and timing aspects of a hardware simulation. The functional model is written in software, while the exact timing of how to monitor and check the design-under-test is kept in HDL. This separation of layers allows each language to excel at what it is good at.
 
+## Key Features
+
+- Fine-grain control over when to send inputs and check outputs, produce inputs or outputs cycle-by-cycle or wait on particular control signals
+- Ability to enable coverage-driven test generation (CDTG) to help minimize the number of tests required to achieve the target coverage
+- Supported coverage nets: `CoverPoint`, `CoverRange`, `CoverGroup`, `CoverCross`
+- Ability to generate HDL glue-logic code per design-under-test to connect hardware drivers layer to the raw data layer
+
 ## Architecture
 
 To achieve this goal, there are 3 main layers:

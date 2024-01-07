@@ -54,14 +54,14 @@ cr_data = CoverRange(
 cp_check_bit_asserted = CoverPoint(
     name='check bit asserted',
     goal=20,
-    mapping=lambda x: int(x) == 1,
+    cover=lambda x: int(x) == 1,
     target=model.check_bit,
 )
 
 cp_check_bit_deasserted = CoverPoint(
     name='check bit de-asserted',
     goal=20,
-    mapping=lambda x: int(x) == 0,
+    cover=lambda x: int(x) == 0,
     target=model.check_bit,
 )
 

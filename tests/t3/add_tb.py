@@ -67,7 +67,7 @@ cg_in1_full = CoverRange(
 cp_cin_asserted = CoverPoint(
     "cin asserted",
     goal=100,
-    mapping=lambda x: int(x) == 1,
+    cover=lambda x: int(x) == 1,
     target=model.cin,
 )
 
@@ -98,18 +98,18 @@ cg_in0_cross_in1 = CoverCross(
 cp_in0_in1_eq_0    = CoverPoint(
     "in0 and in1 equal 0", 
     goal=1,
-    mapping=lambda p: int(p[0]) == 0 and int(p[1]) == 0,
-    inverse=lambda p: (p[0].min(), p[1].min()),
     target=(model.in0, model.in1),
+    advance=lambda p: (p[0].min(), p[1].min()),
+    cover=lambda p: int(p[0]) == 0 and int(p[1]) == 0,
 )
 
 # Check to make sure both inputs are the maximum value at the same time at least once.
 cp_in0_in1_eq_max  = CoverPoint(
     "in0 and in1 equal max", 
     goal=1,
-    mapping=lambda p: int(p[0]) == p[0].max() and int(p[1]) == p[1].max(),
-    inverse=lambda p: (p[0].max(), p[1].max()),
     target=(model.in0, model.in1),
+    advance=lambda p: (p[0].max(), p[1].max()),
+    cover=lambda p: int(p[0]) == p[0].max() and int(p[1]) == p[1].max(),
 )
 
 def fn_cp_cout_gen(p):
@@ -120,10 +120,10 @@ def fn_cp_cout_gen(p):
 cp_cout_gen = CoverPoint(
     "cout generated", 
     goal=10,
-    mapping=lambda x: int(x) == 1,
-    inverse=fn_cp_cout_gen,
     source=(model.in0, model.in1),
+    advance=fn_cp_cout_gen,
     sink=model.cout,
+    cover=lambda x: int(x) == 1,
 )
 
 # Prepare the traces for simulation

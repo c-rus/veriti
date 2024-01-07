@@ -352,13 +352,13 @@ class CoverageNet(_ABC):
         This function accepts either a single object or an interable object that is
         required to read to see if coverage proceeds toward its goal.
 
-        It can be thought of as the inverse function to `next(...)`.
+        It can be thought of as the inverse function to `advance(...)`.
         '''
         pass
 
 
     @_abstractmethod
-    def next(self, rand=False):
+    def advance(self, rand=False):
         '''
         This function returns either a single object or an iterable object that is
         required to be written to make the coverage proceed toward its goal.
@@ -436,15 +436,100 @@ class CoverageNet(_ABC):
     pass
 
 
+class CoverPoint(CoverageNet):
+    '''
+    CoverPoints are designed to track when a single particular event occurs.
+    '''
+    from .model import Signal
+
+    def __init__(self, name: str, goal: int=1, bypass=False, advance=None, cover=None, target: Signal=None, source: Signal=None, sink: Signal=None):
+        '''
+        Initialize a cover point object.
+
+        ### Parameters
+        - `advance`: a function or lambda expression that provides values to write to the source to advance coverage
+        - `cover`: a function or lambda expression that provides a way to read values from a sink to check coverage
+        '''
+        self._count = 0
+        self._goal = goal
+        # define a custom function that should return a boolean to define the targeted point
+        self._fn_cover = cover
+        self._fn_advance = advance
+
+        super().__init__(name=name, bypass=bypass, target=target, source=source, sink=sink)
+        pass
+
+
+    def _transform(self, item):
+        return item if self._fn_cover == None else self._fn_cover(item)
+
+
+    def is_in_sample_space(self, item) -> bool:
+        mapped_item = int(self._transform(item))
+        return mapped_item >= 0 and mapped_item < 2
+    
+
+    def _map_onto_range(self, item) -> int:
+        if self.is_in_sample_space(item) == False:
+            return None
+        return int(self._transform(item))
+    
+
+    def get_range(self) -> range:
+        return range(0, 2, 1)
+    
+
+    def get_partition_count(self) -> int:
+        return 2
+    
+
+    def get_points_met(self) -> int:
+        '''
+        Returns the number of points that have met their goal.
+        '''
+        return 1 if self._count >= self._goal else 0
+
+
+    def cover(self, item):
+        '''
+        Returns `True` if the `cond` was satisfied and updates the internal count
+        as the coverpoint tries to met or exceed its goal.
+        '''
+        if self.is_in_sample_space(item) == False:
+            return False
+        cond = bool(self._map_onto_range(item))
+        if cond == True:
+            self._count += 1
+        return cond
+    
+
+    def advance(self, rand=False):
+        return int(True) if self._fn_advance == None else self._fn_advance(self._source)
+
+
+    def passed(self):
+        return self._count >= self._goal
+    
+
+    def to_string(self, verbose: bool):
+        return str(self._count) + '/' + str(self._goal)
+    
+    pass
+
+
 class CoverGroup(CoverageNet):
     from typing import List as _List
     from .model import Signal
 
     group = []
 
-    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, mapping=None, inverse=None, target: Signal=None, source: Signal=None, sink: Signal=None):
+    def __init__(self, name: str, bins: _List, goal: int=1, bypass: bool=False, max_bins=64, advance=None, cover=None, target: Signal=None, source: Signal=None, sink: Signal=None):
         '''
-        Initialize by expliciting defining the bins.
+        Initialize a cover group object.
+
+        ### Parameters
+        - `advance`: a function or lambda expression that provides values to write to the source to advance coverage
+        - `cover`: a function or lambda expression that provides a way to read values from a sink to check coverage
         '''
         # stores the items per index for each bin group
         self._macro_bins = []
@@ -454,9 +539,6 @@ class CoverGroup(CoverageNet):
         self._bins_lookup = dict()
 
         # defining a bin range is more flexible for defining a large space
-
-        # store the function to map items into the coverage space
-        self._map = mapping
 
         # determine the number of maximum bins
         self._max_bins = max_bins
@@ -488,14 +570,17 @@ class CoverGroup(CoverageNet):
         # initialize the total count of all covers
         self._total_count = 0
 
-        self._inverse = inverse
+        # store the function to map items into the coverage space
+        self._fn_cover = cover
+        # store the function to generate the proper values to advance coverage
+        self._fn_advance = advance
 
         super().__init__(name=name, bypass=bypass, target=target, source=source, sink=sink)
         pass
 
 
     def _transform(self, item):
-        return int(item if self._map == None else self._map(item))
+        return int(item if self._fn_cover == None else self._fn_cover(item))
 
 
     def is_in_sample_space(self, item) -> bool:
@@ -543,7 +628,7 @@ class CoverGroup(CoverageNet):
         # update the total count
         self._total_count += 1
         # record the actual value that initiated this coverage
-        if self._map != None:
+        if self._fn_cover != None:
             if i_macro not in self._mapped_items.keys():
                 self._mapped_items[i_macro] = dict()
             if mapped_item not in self._mapped_items[i_macro].keys():
@@ -562,7 +647,7 @@ class CoverGroup(CoverageNet):
         return points_met
     
 
-    def next(self, rand=False):
+    def advance(self, rand=False):
         '''
         Returns the next item currently not meeting the coverage goal.
 
@@ -575,10 +660,10 @@ class CoverGroup(CoverageNet):
         import random as _random
 
         # can only map 1-way (as of now)
-        if self._map != None and self._inverse == None:
+        if self._fn_cover != None and self._fn_advance == None:
             raise Exception("Cannot map back to original values")
 
-        if self._inverse != None:
+        if self._fn_advance != None:
             raise Exception("Implement inverse mapping")
         
         available = []
@@ -648,7 +733,7 @@ class CoverGroup(CoverageNet):
                 count = self._macro_bins_count[i]
                 result += str(phrase) + ': ' + (' ' * (longest_len - len(str(phrase)))) + str(count) + '/' + str(self._goal)
                 # enumerate on all mapped values that were detected for this bin
-                if self._map != None and i in self._mapped_items.keys() and self.get_range().step > 1:
+                if self._fn_cover != None and i in self._mapped_items.keys() and self.get_range().step > 1:
                     # determine the string formatting by identifying longest string
                     sub_longest_len = _find_longest_str_len(self._mapped_items[i].keys())
                     seq = [(key, val) for key, val in self._mapped_items[i].items()]
@@ -683,13 +768,13 @@ class CoverRange(CoverageNet):
     '''
     from .model import Signal
 
-    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, mapping=None, target: Signal=None, source: Signal=None, sink: Signal=None):
+    def __init__(self, name: str, span: range, goal: int=1, bypass: bool=False, max_steps: int=64, advance=None, cover=None, target: Signal=None, source: Signal=None, sink: Signal=None):
         '''
-        Initialize a CoverRange. 
+        Initialize a cover range object. 
         
-        The `mapping` argument is a callable function that expects to return an `int`, 
-        which effectively takes some outside input(s) and maps it to a number within 
-        the specified range.
+        ### Parameters
+        - `advance`: a function or lambda expression that provides values to write to the source to advance coverage
+        - `cover`: a function or lambda expression that provides a way to read values from a sink to check coverage
         '''
         import math
 
@@ -719,7 +804,8 @@ class CoverRange(CoverageNet):
         self._total_count = 0
 
         # store a potential custom mapping function
-        self._map = mapping
+        self._fn_cover = cover
+        self._fn_advance = advance
 
         # store the actual values when mapped items cover toward the goal
         self._mapped_items = dict()
@@ -757,7 +843,7 @@ class CoverRange(CoverageNet):
     
 
     def _transform(self, item):
-        return int(item) if self._map == None else int(self._map(item))
+        return int(item) if self._fn_cover == None else int(self._fn_cover(item))
 
 
     def is_in_sample_space(self, item) -> bool:
@@ -800,7 +886,7 @@ class CoverRange(CoverageNet):
         return is_progress
     
 
-    def next(self, rand: bool=False):
+    def advance(self, rand: bool=False):
         '''
         Returns the next item currently not meeting the coverage goal.
 
@@ -813,8 +899,12 @@ class CoverRange(CoverageNet):
         import random as _random
 
         # can only map 1-way (as of now)
-        if self._map != None:
+        if self._fn_cover != None and self._fn_advance == None:
             raise Exception("Cannot map back to original values")
+
+        if self._fn_advance != None:
+            raise Exception("Implement")
+        
         available = []
         # filter out the elements who have not yet met the goal
         for i, count in enumerate(self._table_counts):
@@ -880,90 +970,6 @@ class CoverRange(CoverageNet):
         return result
 
 
-class CoverPoint(CoverageNet):
-    '''
-    CoverPoints are designed to track when a single particular event occurs.
-    '''
-    from .model import Signal
-
-    def __init__(self, name: str, goal: int=1, bypass=False, mapping=None, inverse=None, target: Signal=None, source: Signal=None, sink: Signal=None):
-        '''
-        Initialize a CoverPoint. 
-        
-        The `mapping` argument is a callable function that expects to return a `bool`, 
-        which effectively takes some outside input(s) and maps it to the user-defined 
-        coverage point.
-
-        The `observe` argument is a single Signal or a tuple of Signal to be sent to the mapping
-        function.
-        '''
-        self._count = 0
-        self._goal = goal
-        # define a custom function that should return a boolean to define the targeted point
-        self._mapping = mapping
-        self._inverse = inverse
-
-        super().__init__(name=name, bypass=bypass, target=target, source=source, sink=sink)
-        pass
-
-
-    def _transform(self, item):
-        return item if self._mapping == None else self._mapping(item)
-
-
-    def is_in_sample_space(self, item) -> bool:
-        mapped_item = int(self._transform(item))
-        return mapped_item >= 0 and mapped_item < 2
-    
-
-    def _map_onto_range(self, item) -> int:
-        if self.is_in_sample_space(item) == False:
-            return None
-        return int(self._transform(item))
-    
-
-    def get_range(self) -> range:
-        return range(0, 2, 1)
-    
-
-    def get_partition_count(self) -> int:
-        return 2
-    
-
-    def get_points_met(self) -> int:
-        '''
-        Returns the number of points that have met their goal.
-        '''
-        return 1 if self._count >= self._goal else 0
-
-
-    def cover(self, item):
-        '''
-        Returns `True` if the `cond` was satisfied and updates the internal count
-        as the coverpoint tries to met or exceed its goal.
-        '''
-        if self.is_in_sample_space(item) == False:
-            return False
-        cond = bool(self._map_onto_range(item))
-        if cond == True:
-            self._count += 1
-        return cond
-    
-
-    def next(self, rand=False):
-        return int(True) if self._inverse == None else self._inverse(self._actors)
-
-
-    def passed(self):
-        return self._count >= self._goal
-    
-
-    def to_string(self, verbose: bool):
-        return str(self._count) + '/' + str(self._goal)
-    
-    pass
-
-
 class CoverCross(CoverageNet):
     '''
     CoverCrosses are designed to track cross products between two or more coverage nets.
@@ -988,7 +994,8 @@ class CoverCross(CoverageNet):
             goal=goal,
             bypass=bypass,
             max_steps=None,
-            mapping=None,
+            cover=None,
+            advance=None,
         )
 
         net: CoverageNet
@@ -1044,8 +1051,8 @@ class CoverCross(CoverageNet):
         return self._source_list
 
 
-    def next(self, rand=False):
-        index = self._inner.next(rand)
+    def advance(self, rand=False):
+        index = self._inner.advance(rand)
         # convert the 1-dimensional value into its n-dimensional value
         item = self._pack(index)
         # print(index, '->', item)
